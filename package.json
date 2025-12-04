@@ -1,0 +1,20 @@
+{
+  "name": "gaussian-splats-viewer",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@lumaai/luma-web": "^0.2.2",
+    "@mkkellogg/gaussian-splats-3d": "^0.4.5",
+    "@needle-tools/engine": "^3.50.0-beta",
+    "three": "npm:@needle-tools/three@0.162.10"
+  },
+  "devDependencies": {
+    "vite": "^5.4.8"
+  }
+}

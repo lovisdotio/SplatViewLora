@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>SplatViewLora</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+  <style>
+    /* ===== THEME VARIABLES ===== */
+    :root {
+      /* Light theme (default) */
+      --gui-bg: rgba(255, 255, 255, 0.96);
+      --gui-bg-solid: #ffffff;
+      --gui-border: rgba(0, 0, 0, 0.08);
+      --gui-text: #1a1a1a;
+      --gui-text-muted: #6b7280;
+      --gui-accent: #3b82f6;
+      --gui-accent-hover: #2563eb;
+      --gui-input-bg: #f3f4f6;
+      --gui-input-border: #e5e7eb;
+      --gui-hover: #f9fafb;
+      --gui-radius: 12px;
+      --gui-radius-sm: 6px;
+      --gui-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+      --gui-slider-bg: #e5e7eb;
+      --gui-slider-fg: #3b82f6;
+    }
+
+    /* Dark theme */
+    [data-theme="dark"] {
+      --gui-bg: rgba(24, 24, 27, 0.96);
+      --gui-bg-solid: #18181b;
+      --gui-border: rgba(255, 255, 255, 0.08);
+      --gui-text: #fafafa;
+      --gui-text-muted: #a1a1aa;
+      --gui-accent: #60a5fa;
+      --gui-accent-hover: #3b82f6;
+      --gui-input-bg: #27272a;
+      --gui-input-border: #3f3f46;
+      --gui-hover: #27272a;
+      --gui-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      --gui-slider-bg: #3f3f46;
+      --gui-slider-fg: #60a5fa;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0a0a0a;
+    }
+
+    #app {
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+    }
+
+    /* ===== APP HEADER BAR ===== */
+    #app-header {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 1001;
+      background: var(--gui-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--gui-border);
+      border-radius: var(--gui-radius);
+      padding: 8px 14px;
+      box-shadow: var(--gui-shadow);
+    }
+
+    #app-logo {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: -0.5px;
+      white-space: nowrap;
+    }
+
+    #app-logo .logo-splat {
+      color: #666666;
+    }
+
+    #app-logo .logo-view {
+      color: #aaaaaa;
+    }
+
+    #app-logo .logo-lora {
+      color: #ffffff;
+    }
+
+    /* Theme Toggle Button */
+    #theme-toggle {
+      width: 28px;
+      height: 28px;
+      border: none;
+      background: var(--gui-input-bg);
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--gui-border);
+      transition: all 0.15s ease;
+    }
+
+    #theme-toggle:hover {
+      background: var(--gui-hover);
+      transform: scale(1.05);
+    }
+
+    #theme-toggle svg {
+      width: 14px;
+      height: 14px;
+      color: var(--gui-text);
+    }
+
+    #theme-toggle .sun-icon { display: none; }
+    #theme-toggle .moon-icon { display: block; }
+    
+    [data-theme="dark"] #theme-toggle .sun-icon { display: block; }
+    [data-theme="dark"] #theme-toggle .moon-icon { display: none; }
+
+    /* ===== DAT.GUI MODERN OVERRIDE ===== */
+    .dg.ac {
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
+      z-index: 1000 !important;
+      /* Move GUI to left side */
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      right: auto !important;
+    }
+
+    .dg.main {
+      background: var(--gui-bg) !important;
+      border-radius: var(--gui-radius) !important;
+      box-shadow: var(--gui-shadow) !important;
+      backdrop-filter: blur(20px) !important;
+      -webkit-backdrop-filter: blur(20px) !important;
+      border: 1px solid var(--gui-border) !important;
+      overflow: hidden !important;
+      max-height: calc(100vh - 90px) !important;
+      display: flex !important;
+      flex-direction: column !important;
+      /* Position on left side, below header */
+      margin-left: 16px !important;
+      margin-top: 60px !important;
+    }
+
+    /* Fix panel for left-side positioning */
+    .dg.a {
+      float: left !important;
+      margin-right: 0 !important;
+    }
+
+    /* Resize handle added via JavaScript */
+    .dg.main {
+      position: relative !important;
+    }
+
+    /* FIXED: Scrollable content area */
+    .dg.main > ul {
+      overflow-y: auto !important;
+      overflow-x: hidden !important;
+      max-height: calc(100vh - 140px) !important;
+      scrollbar-width: thin !important;
+      scrollbar-color: var(--gui-input-border) transparent !important;
+    }
+
+    .dg.main > ul::-webkit-scrollbar {
+      width: 6px !important;
+    }
+
+    .dg.main > ul::-webkit-scrollbar-track {
+      background: transparent !important;
+    }
+
+    .dg.main > ul::-webkit-scrollbar-thumb {
+      background: var(--gui-input-border) !important;
+      border-radius: 3px !important;
+    }
+
+    .dg.main > ul::-webkit-scrollbar-thumb:hover {
+      background: var(--gui-text-muted) !important;
+    }
+
+    .dg.main .close-button {
+      background: var(--gui-bg-solid) !important;
+      color: var(--gui-text) !important;
+      font-family: inherit !important;
+      font-size: 11px !important;
+      font-weight: 500 !important;
+      text-transform: uppercase !important;
+      letter-spacing: 0.5px !important;
+      padding: 12px 16px !important;
+      border-top: 1px solid var(--gui-border) !important;
+      flex-shrink: 0 !important;
+    }
+
+    .dg.main .close-button:hover {
+      background: var(--gui-hover) !important;
+    }
+
+    /* Folder styling */
+    .dg li.folder {
+      border: none !important;
+      margin: 4px 8px !important;
+      border-radius: var(--gui-radius-sm) !important;
+      overflow: hidden !important;
+      background: var(--gui-bg-solid) !important;
+      border: 1px solid var(--gui-border) !important;
+    }
+
+    .dg li.folder:first-child {
+      margin-top: 8px !important;
+    }
+
+    .dg li.folder .title {
+      background: var(--gui-bg-solid) !important;
+      color: var(--gui-text) !important;
+      font-weight: 600 !important;
+      font-size: 11px !important;
+      text-transform: uppercase !important;
+      letter-spacing: 0.5px !important;
+      padding: 12px 44px 12px 14px !important;
+      border-bottom: none !important;
+      margin-left: 0 !important;
+      cursor: pointer !important;
+      transition: background 0.15s !important;
+    }
+
+    .dg li.folder .title:hover {
+      background: var(--gui-hover) !important;
+    }
+
+    .dg li.folder.closed .title {
+      border-bottom: none !important;
+    }
+
+    .dg li.folder:not(.closed) .title {
+      border-bottom: 1px solid var(--gui-border) !important;
+    }
+
+    /* Folder children container */
+    .dg li.folder > ul {
+      background: var(--gui-bg-solid) !important;
+      padding: 4px 0 !important;
+      margin: 0 !important;
+      border: none !important;
+      overflow: visible !important;
+    }
+
+    /* Individual controls */
+    .dg li:not(.folder) {
+      background: transparent !important;
+      border: none !important;
+      height: auto !important;
+      padding: 6px 14px !important;
+      line-height: 1.4 !important;
+    }
+
+    .dg li:not(.folder):hover {
+      background: var(--gui-hover) !important;
+    }
+
+    /* Control labels */
+    .dg .cr .property-name {
+      color: var(--gui-text-muted) !important;
+      font-size: 12px !important;
+      font-weight: 400 !important;
+      width: 45% !important;
+      padding: 0 !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+    }
+
+    /* Control values container */
+    .dg .cr .c {
+      width: 55% !important;
+      float: right !important;
+    }
+
+    /* Text/Number inputs */
+    .dg .cr input[type="text"],
+    .dg .cr input[type="number"] {
+      background: var(--gui-input-bg) !important;
+      border: 1px solid var(--gui-input-border) !important;
+      border-radius: var(--gui-radius-sm) !important;
+      color: var(--gui-text) !important;
+      font-family: inherit !important;
+      font-size: 12px !important;
+      padding: 6px 10px !important;
+      width: 100% !important;
+      height: auto !important;
+      margin: 0 !important;
+      transition: all 0.15s !important;
+    }
+
+    .dg .cr input[type="text"]:focus,
+    .dg .cr input[type="number"]:focus {
+      background: var(--gui-bg-solid) !important;
+      border-color: var(--gui-accent) !important;
+      outline: none !important;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
+    }
+
+    /* Color picker */
+    .dg .c input[type="color"] {
+      width: 100% !important;
+      height: 28px !important;
+      border: 1px solid var(--gui-input-border) !important;
+      border-radius: var(--gui-radius-sm) !important;
+      padding: 2px !important;
+      cursor: pointer !important;
+      background: var(--gui-bg-solid) !important;
+    }
+
+    .dg .c input[type="color"]::-webkit-color-swatch-wrapper {
+      padding: 2px !important;
+    }
+
+    .dg .c input[type="color"]::-webkit-color-swatch {
+      border-radius: 4px !important;
+      border: none !important;
+    }
+
+    /* Select dropdown */
+    .dg .cr select {
+      background: var(--gui-input-bg) !important;
+      border: 1px solid var(--gui-input-border) !important;
+      border-radius: var(--gui-radius-sm) !important;
+      color: var(--gui-text) !important;
+      font-family: inherit !important;
+      font-size: 12px !important;
+      padding: 6px 10px !important;
+      width: 100% !important;
+      cursor: pointer !important;
+      transition: all 0.15s !important;
+    }
+
+    .dg .cr select:focus {
+      border-color: var(--gui-accent) !important;
+      outline: none !important;
+    }
+
+    /* Checkbox */
+    .dg .cr.boolean input[type="checkbox"] {
+      width: 18px !important;
+      height: 18px !important;
+      accent-color: var(--gui-accent) !important;
+      cursor: pointer !important;
+      margin: 0 !important;
+    }
+
+    /* Slider */
+    .dg .cr.number.has-slider input[type="text"] {
+      width: 50px !important;
+      flex-shrink: 0 !important;
+    }
+
+    .dg .slider {
+      background: var(--gui-slider-bg) !important;
+      border-radius: 3px !important;
+      height: 6px !important;
+      margin: 10px 8px 10px 0 !important;
+    }
+
+    .dg .slider-fg {
+      background: var(--gui-slider-fg) !important;
+      border-radius: 3px !important;
+    }
+
+    /* Buttons */
+    .dg .cr.function .property-name {
+      width: 100% !important;
+      text-align: left !important;
+      background: var(--gui-input-bg) !important;
+      color: var(--gui-text) !important;
+      font-weight: 500 !important;
+      font-size: 12px !important;
+      padding: 10px 14px !important;
+      border-radius: var(--gui-radius-sm) !important;
+      border: 1px solid var(--gui-input-border) !important;
+      cursor: pointer !important;
+      transition: all 0.15s !important;
+    }
+
+    .dg .cr.function:hover .property-name {
+      background: var(--gui-accent) !important;
+      color: #fff !important;
+      border-color: var(--gui-accent) !important;
+    }
+
+    /* Nested folders */
+    .dg li.folder li.folder {
+      margin: 4px 8px !important;
+      background: var(--gui-hover) !important;
+    }
+
+    .dg li.folder li.folder .title {
+      background: var(--gui-hover) !important;
+      font-size: 10px !important;
+    }
+
+    .dg li.folder li.folder .title:hover {
+      background: var(--gui-input-bg) !important;
+    }
+
+    /* String display (readonly) */
+    .dg .cr.string input[type="text"][disabled],
+    .dg .cr.string input[type="text"][readonly] {
+      background: var(--gui-hover) !important;
+      color: var(--gui-text-muted) !important;
+      cursor: default !important;
+    }
+
+    /* Remove default dat.gui borders */
+    .dg li:not(.folder) {
+      border-left: none !important;
+    }
+
+    .dg li.save-row {
+      display: none !important;
+    }
+
+    /* Controller number styles */
+    .dg .cr.number {
+      border-left: none !important;
+    }
+
+    /* Animation */
+    .dg li.folder > ul {
+      transition: height 0.2s ease !important;
+    }
+
+    /* Make folder arrows more subtle */
+    .dg li.folder .title:before {
+      color: var(--gui-text-muted) !important;
+    }
+
+    /* Hidden inputs */
+    .hidden-input {
+      display: none !important;
+    }
+
+    /* Hide the global Close Controls button */
+    .dg.main .close-button {
+      display: none !important;
+    }
+
+    /* Better accordion styling - make folder titles more clickable */
+    .dg li.title {
+      cursor: pointer !important;
+      user-select: none !important;
+      position: relative !important;
+      padding-right: 42px !important;
+    }
+
+    /* Add chevron indicator - dat.GUI uses ul.closed inside li.folder */
+    .dg li.title:after {
+      content: '▼' !important;
+      position: absolute !important;
+      right: 16px !important;
+      top: 50% !important;
+      transform: translateY(-50%) !important;
+      font-size: 8px !important;
+      color: var(--gui-text-muted) !important;
+      transition: transform 0.2s ease !important;
+    }
+
+    /* Rotate chevron when folder is closed (ul has class closed) */
+    .dg ul.closed > li.title:after {
+      transform: translateY(-50%) rotate(-90deg) !important;
+    }
+
+    /* Hide folder contents when closed */
+    .dg ul.closed > li:not(.title) {
+      display: none !important;
+    }
+
+    /* LoRA Capture folder - subtle background shimmer */
+    @keyframes lora-shimmer {
+      0%, 100% {
+        background-image: linear-gradient(rgba(255, 255, 255, 0), rgba(255, 255, 255, 0));
+      }
+      50% {
+        background-image: linear-gradient(rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.03));
+      }
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/dat.gui@0.7.7/build/dat.gui.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ccapture.js-npmfixed@1.1.0/build/CCapture.all.min.js"></script>
+  <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+</head>
+<body>
+  <div id="app"></div>
+  
+  <!-- App Header with Logo and Theme Toggle -->
+  <div id="app-header">
+    <div id="app-logo"><span class="logo-splat">Splat</span><span class="logo-view">View</span><span class="logo-lora">Lora</span></div>
+    <button id="theme-toggle" title="Toggle theme">
+      <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="5"/>
+        <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+      </svg>
+      <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+      </svg>
+    </button>
+  </div>
+  
+  <script type="module" src="/main.js"></script>
+  <input type="file" id="plyFileInput" accept=".ply,.splat,.ksplat" class="hidden-input" />
+  
+  <script>
+    // Theme detection and toggle
+    (function() {
+      const toggle = document.getElementById('theme-toggle');
+      const html = document.documentElement;
+      
+      // Check for saved theme - default to dark
+      function getPreferredTheme() {
+        const saved = localStorage.getItem('theme');
+        if (saved) return saved;
+        return 'dark'; // Dark mode by default
+      }
+      
+      // Apply theme
+      function setTheme(theme) {
+        html.setAttribute('data-theme', theme);
+        localStorage.setItem('theme', theme);
+      }
+      
+      // Initialize
+      setTheme(getPreferredTheme());
+      
+      // Toggle handler
+      toggle.addEventListener('click', () => {
+        const current = html.getAttribute('data-theme');
+        setTheme(current === 'dark' ? 'light' : 'dark');
+      });
+      
+      // Listen for system theme changes
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+        if (!localStorage.getItem('theme')) {
+          setTheme(e.matches ? 'dark' : 'light');
+        }
+      });
+    })();
+
+    // Add resize handle to right side of dat.GUI panel
+    (function() {
+      function initResizer() {
+        const dgMain = document.querySelector('.dg.main');
+        if (!dgMain) {
+          setTimeout(initResizer, 100);
+          return;
+        }
+
+        // Create resize handle
+        const resizer = document.createElement('div');
+        resizer.id = 'gui-resizer';
+        resizer.style.cssText = `
+          position: absolute;
+          top: 0;
+          right: -4px;
+          width: 8px;
+          height: 100%;
+          cursor: ew-resize;
+          z-index: 1002;
+          background: transparent;
+        `;
+        dgMain.style.position = 'relative';
+        dgMain.appendChild(resizer);
+
+        let isResizing = false;
+        let startX, startWidth;
+
+        resizer.addEventListener('mousedown', (e) => {
+          isResizing = true;
+          startX = e.clientX;
+          startWidth = dgMain.offsetWidth;
+          document.body.style.cursor = 'ew-resize';
+          document.body.style.userSelect = 'none';
+          e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', (e) => {
+          if (!isResizing) return;
+          const diff = e.clientX - startX;
+          const newWidth = Math.max(200, Math.min(600, startWidth + diff));
+          dgMain.style.width = newWidth + 'px';
+        });
+
+        document.addEventListener('mouseup', () => {
+          if (isResizing) {
+            isResizing = false;
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+          }
+        });
+
+        // Hover effect
+        resizer.addEventListener('mouseenter', () => {
+          resizer.style.background = 'var(--gui-accent)';
+          resizer.style.opacity = '0.5';
+        });
+        resizer.addEventListener('mouseleave', () => {
+          if (!isResizing) {
+            resizer.style.background = 'transparent';
+            resizer.style.opacity = '1';
+          }
+        });
+      }
+
+      // Wait for dat.GUI to load
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => setTimeout(initResizer, 500));
+      } else {
+        setTimeout(initResizer, 500);
+      }
+    })();
+  </script>
+</body>
+</html>
