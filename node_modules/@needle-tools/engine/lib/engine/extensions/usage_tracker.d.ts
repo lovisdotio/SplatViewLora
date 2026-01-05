@@ -1,0 +1,13 @@
+import { type GLTF, type GLTFLoaderPlugin, GLTFParser } from "three/examples/jsm/loaders/GLTFLoader.js";
+export declare class InternalUsageTrackerPlugin implements GLTFLoaderPlugin {
+    get name(): string;
+    static isLoading(object: object): boolean;
+    private static _loadingProcesses;
+    private readonly parser;
+    private readonly _getDependency;
+    private readonly _loadingId;
+    private _loadedObjects;
+    constructor(parser: GLTFParser);
+    beforeRoot(): null;
+    afterRoot(_result: GLTF): null;
+}

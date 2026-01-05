@@ -1,0 +1,24 @@
+
+export function awaitInputAsync() : Promise<void> {
+    return new Promise((res, _) => {
+        const callback = () => {
+            if (fn == undefined) return;
+            document.removeEventListener('pointerdown', fn);
+            document.removeEventListener('click', fn);
+            document.removeEventListener('dragstart', fn);
+            document.removeEventListener('touchstart', fn);
+            res();
+        };
+        const fn = callback;
+        document.addEventListener('pointerdown', fn);
+        document.addEventListener('click', fn);
+        document.addEventListener('dragstart', fn);
+        document.addEventListener('touchstart', fn);
+
+    });
+}
+
+export async function awaitInput(cb) {
+    await awaitInputAsync();
+    cb();
+}

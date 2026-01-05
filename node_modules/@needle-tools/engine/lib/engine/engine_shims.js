@@ -1,0 +1,25 @@
+// REMOVE once we switch to TypeScript 5.x
+// OffscreenCanvas has a convertToBlob method, but TypeScript 4.x doesn't have the proper types for it.
+// REMOVE once usage of browsers that don't support OffscreenCanvas is low
+// Shim for missing OffscreenCanvas in iOS 16.x
+if (typeof globalThis !== undefined && !('OffscreenCanvas' in globalThis)) {
+    // @ts-ignore
+    globalThis['OffscreenCanvas'] = class OffscreenCanvas {
+        canvas;
+        constructor(width, height) {
+            this.canvas = document.createElement("canvas");
+            this.canvas.width = width;
+            this.canvas.height = height;
+            // @ts-ignore
+            this.canvas.convertToBlob = (type, quality) => {
+                return new Promise(resolve => {
+                    this.canvas.toBlob(resolve, type, quality);
+                });
+            };
+            // @ts-ignore
+            return this.canvas;
+        }
+    };
+}
+export {};
+//# sourceMappingURL=engine_shims.js.map

@@ -1,0 +1,9 @@
+import { Texture } from "three";
+/** Returns a HTML element containing an icon. Using https://fonts.google.com/icons
+ * As a string you should pass in the name of the icon, e.g. "add" or "delete"
+ * @returns HTMLElement containing the icon
+*/
+export declare function getIconElement(str: string): HTMLElement;
+/**@returns true if the element is an needle engine icon element */
+export declare function isIconElement(element: Node): boolean;
+export declare function getIconTexture(str: string): Promise<Texture | null>;

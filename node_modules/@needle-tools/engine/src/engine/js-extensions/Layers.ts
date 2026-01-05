@@ -1,0 +1,24 @@
+import { Layers, Object3D } from "three"
+
+
+const $customVisibilityFlag = Symbol("customVisibilityFlag");
+
+/**
+ * Sets the visibility of a single object without affecting the visibility of the child hierarchy
+ */
+export function setCustomVisibility(obj: Object3D, visible: boolean) {
+    obj.layers[$customVisibilityFlag] = visible;
+}
+
+const $didPatch = Symbol("DidPatchLayers");
+export function patchLayers() {
+    const prot = Layers.prototype;
+    if (prot[$didPatch]) return;
+    prot[$didPatch] = true;
+    const origTest = prot.test;
+    prot.test = function (layer: Layers): boolean {
+        if(this[$customVisibilityFlag] === false) return false;
+        return origTest.call(this, layer);
+    };
+}
+patchLayers();

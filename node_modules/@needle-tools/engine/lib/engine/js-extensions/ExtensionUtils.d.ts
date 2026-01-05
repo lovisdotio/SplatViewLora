@@ -1,0 +1,9 @@
+import type { Constructor } from "../../engine/engine_types.js";
+/** @internal */
+export declare function applyPrototypeExtensions<T>(obj: any, prototype: Constructor<T>): void;
+/** @internal */
+export declare function registerPrototypeExtensions<T>(type: Constructor<T>): void;
+/** @internal */
+export interface IApplyPrototypeExtension {
+    apply(object: object): void;
+}

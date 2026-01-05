@@ -1,0 +1,18 @@
+import { Camera } from "three";
+export declare class SceneTransition {
+    private readonly _fadeToColorQuad;
+    private readonly _fadeToColorMaterial;
+    constructor();
+    dispose(): void;
+    update(camera: Camera, dt: number): void;
+    remove(): void;
+    /** Call to fade rendering to black for a short moment (the returned promise will be resolved when fully black)
+     * This can be used to mask scene transitions or teleportation
+     * @returns a promise that is resolved when the screen is fully black
+     * @example `fadeTransition().then(() => { <fully_black> })`
+    */
+    fadeTransition(): Promise<void>;
+    private _requestedFadeValue;
+    private _transitionPromise;
+    private _transitionResolve;
+}

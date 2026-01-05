@@ -1,0 +1,140 @@
+import { Object3D, Vector3 } from "three";
+
+import { OwnershipModel } from "../../engine/engine_networking.js";
+import type { IModel } from "../../engine/engine_networking_types.js";
+import { Context } from "../../engine/engine_setup.js";
+import * as utils from "../../engine/engine_three_utils.js";
+import { TypeStore } from "../../engine/engine_typestore.js";
+import { Behaviour, GameObject } from "../Component.js";
+import { AvatarMarker } from "../webxr/WebXRAvatar.js";
+
+/** @internal */
+export class Avatar_POI {
+
+    public static Pois: { obj: Object3D, avatar: AvatarMarker | null }[] = [];
+    public static LastChangeTime: number = 0;
+
+    public static Add(context: Context, obj: Object3D, ignoredBy: AvatarMarker | null = null) {
+        if (!obj) return;
+        for (const e of this.Pois) {
+            if (e.obj === obj) return;
+        }
+        this.Pois.push({ obj: obj, avatar: ignoredBy });
+        this.LastChangeTime = context.time.time;
+        // console.log("Added", obj?.name);
+    }
+
+    public static Remove(context: Context | null, obj: Object3D | null) {
+
+        if (!obj) return;
+        for (const e of this.Pois) {
+            if (e.obj === obj) {
+                this.Pois.splice(this.Pois.indexOf(e), 1);
+                this.LastChangeTime = context?.time.time ?? Context.Current?.time.time;
+                // console.log("Removed", obj?.name);
+                return;
+            }
+        }
+    }
+}
+
+enum NetworkEvents {
+    TargetChanged = "avatar-look-target-changed"
+}
+
+class TargetModel implements IModel {
+    public guid!: string;
+    public position: Vector3 = new Vector3();
+}
+
+/** @internal */
+export class Avatar_Brain_LookAt extends Behaviour {
+
+    public set controlledTarget(target: Object3D) {
+        this.target = target;
+        // HACK
+        const r = TypeStore.get("MoveRandom");
+        if (r && this.target) {
+            const rm = GameObject.getComponent(this.target, r) as Behaviour;
+            if (rm) {
+                rm.destroy();
+            }
+        }
+
+        // this.target.add(new AxesHelper(.1));
+    }
+
+    // that target to copy positions into
+    private target: Object3D | null = null;
+
+    private avatar: AvatarMarker | null = null;
+    private _model: OwnershipModel | null = null;
+    private _targetModel: TargetModel = new TargetModel();
+    private _currentTargetObject: Object3D | null = null;
+    private _lastUpdateTime: number = 0;
+    private _lookDuration: number = 0;
+    private _lastPoiChangedTime: number = 0;
+
+    awake(): void {
+        this.avatar = GameObject.getComponentInParent(this.gameObject, AvatarMarker);
+
+        if (this.avatar) {
+            const marker = GameObject.getComponentInParent(this.gameObject, AvatarMarker);
+            this._model = new OwnershipModel(this.context.connection, this.guid);
+            if (marker?.isLocalAvatar) {
+                this._model.requestOwnership();
+            }
+        }
+
+        this.context.connection.beginListen(NetworkEvents.TargetChanged, (cb: TargetModel) => {
+            if (this.target && cb && cb.guid === this.avatar?.guid) {
+                utils.setWorldPosition(this.target, cb.position);
+            }
+        });
+
+        // console.log(this);
+    }
+
+    update(): void {
+        const connected = this.context.connection.isConnected;
+        if (!connected || this._model?.hasOwnership) {
+
+            if (Avatar_POI.LastChangeTime !== this._lastPoiChangedTime) {
+                this._lastPoiChangedTime = Avatar_POI.LastChangeTime;
+                this._lookDuration = 0;
+            }
+
+            this.selectTarget();
+
+            // send target info
+            if (this._currentTargetObject && this.context.time.frameCount % 10 === 0 && this.target) {
+                const wp = utils.getWorldPosition(this._currentTargetObject);
+                utils.setWorldPosition(this.target, wp);
+
+                if (this.context.connection.isConnected && this.avatar) {
+                    this.context.connection.send(NetworkEvents.TargetChanged, this._targetModel);
+                    this._targetModel.guid = this.avatar.guid;
+                    this._targetModel.position.copy(wp);
+                }
+            }
+        }
+    }
+
+    private selectTarget() {
+        // select random target
+        const td = this.context.time.time - this._lastUpdateTime;
+        if (td > this._lookDuration) {
+            this._lastUpdateTime = this.context.time.time;
+            this._lookDuration = Math.random() * .5 + .2;
+            const pois = Avatar_POI.Pois;
+            if (pois.length > 0) {
+                const poi = pois[Math.floor(Math.random() * pois.length)];
+                if (poi && poi.obj) {
+                    if (poi.avatar && poi.avatar === this.avatar) return;
+                    this._currentTargetObject = poi.obj;
+                    // console.log(this._currentTargetObject);
+                }
+            }
+        }
+    }
+}

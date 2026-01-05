@@ -1,0 +1,26 @@
+import { Object3D } from "three";
+import { Context } from "./engine_setup.js";
+export declare enum ViewDevice {
+    Browser = "browser",
+    Headset = "headset",
+    Handheld = "handheld"
+}
+export declare class PlayerView {
+    readonly userId: string;
+    readonly context: Context;
+    viewDevice: ViewDevice;
+    get currentObject(): Object3D | undefined | null;
+    set currentObject(obj: Object3D | undefined | null);
+    get isConnected(): boolean;
+    removed: boolean;
+    private _object;
+    constructor(userId: string, context: Context);
+}
+export declare class PlayerViewManager {
+    private readonly context;
+    private readonly playerViews;
+    constructor(context: Context);
+    setPlayerView(id: string, obj: Object3D | undefined | null, device: ViewDevice): void;
+    getPlayerView(id: string | null | undefined): PlayerView | undefined;
+    removePlayerView(id: string, device: ViewDevice): void;
+}

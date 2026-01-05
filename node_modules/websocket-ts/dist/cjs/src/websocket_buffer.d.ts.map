@@ -1,0 +1,1 @@
+{"version":3,"file":"websocket_buffer.d.ts","sourceRoot":"","sources":["../../../src/websocket_buffer.ts"],"names":[],"mappings":"AAAA;;GAEG;AACH,MAAM,WAAW,eAAe,CAC9B,CAAC,GAAG,MAAM,GAAG,eAAe,GAAG,IAAI,GAAG,eAAe;IAErD;;;OAGG;IACH,GAAG,CAAC,OAAO,EAAE,CAAC,GAAG,IAAI,CAAC;IAEtB;;;OAGG;IACH,IAAI,IAAI,CAAC,GAAG,SAAS,CAAC;CACvB"}

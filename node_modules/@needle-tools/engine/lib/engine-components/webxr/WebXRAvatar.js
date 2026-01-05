@@ -1,0 +1,45 @@
+import { getParam } from "../../engine/engine_utils.js";
+import { Behaviour } from "../Component.js";
+export const debug = getParam("debugavatar");
+/**
+ * This is used to mark an object being controlled / owned by a player
+ * This system might be refactored and moved to a more centralized place in a future version
+ */
+// We might be updating this system in the future to a centralized API (PlayerView)  
+// but since currently quite a few core components rely on it, we're keeping it for now
+export class AvatarMarker extends Behaviour {
+    static getAvatar(index) {
+        if (index >= 0 && index < AvatarMarker.instances.length)
+            return AvatarMarker.instances[index];
+        return null;
+    }
+    static instances = [];
+    static onAvatarMarkerCreated(cb) {
+        AvatarMarker._onNewAvatarMarkerAdded.push(cb);
+        return cb;
+    }
+    static onAvatarMarkerDestroyed(cb) {
+        AvatarMarker._onAvatarMarkerDestroyed.push(cb);
+        return cb;
+    }
+    static _onNewAvatarMarkerAdded = [];
+    static _onAvatarMarkerDestroyed = [];
+    connectionId;
+    avatar;
+    awake() {
+        AvatarMarker.instances.push(this);
+        if (debug)
+            console.log(this);
+        for (const cb of AvatarMarker._onNewAvatarMarkerAdded)
+            cb({ avatarMarker: this, gameObject: this.gameObject });
+    }
+    onDestroy() {
+        AvatarMarker.instances.splice(AvatarMarker.instances.indexOf(this), 1);
+        for (const cb of AvatarMarker._onAvatarMarkerDestroyed)
+            cb({ avatarMarker: this, gameObject: this.gameObject });
+    }
+    isLocalAvatar() {
+        return this.connectionId === this.context.connection.connectionId;
+    }
+}
+//# sourceMappingURL=WebXRAvatar.js.map

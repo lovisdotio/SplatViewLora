@@ -1,0 +1,12 @@
+import { Matrix4, Quaternion } from 'three';
+import type { IGameObject } from '../engine_types.js';
+import type { IXRRig } from './XRRig.js';
+export declare const flipForwardMatrix: Matrix4;
+export declare const flipForwardQuaternion: Quaternion;
+export declare class ImplictXRRig implements IXRRig {
+    priority: number;
+    gameObject: IGameObject;
+    isXRRig(): boolean;
+    get isActive(): boolean;
+    constructor();
+}

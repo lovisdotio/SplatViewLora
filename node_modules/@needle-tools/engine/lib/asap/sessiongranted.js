@@ -1,0 +1,66 @@
+import { needleEngineHasLoaded } from "./utils.js";
+/** @returns a new XRSession init object with defaults */
+function getDefaultSessionInit(mode) {
+    switch (mode) {
+        case "immersive-ar":
+            return {
+                optionalFeatures: ['anchors', 'local-floor', 'hand-tracking', 'layers', 'dom-overlay', 'hit-test'],
+            };
+        case "immersive-vr":
+            return {
+                optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking', 'high-fixed-foveation-level', 'layers'],
+            };
+        default:
+            console.warn("No default session init for mode", mode);
+            return {};
+    }
+}
+let sessionGrantedHandled = false;
+export function handleSessionGrantedASAP(opts) {
+    if (sessionGrantedHandled)
+        return;
+    sessionGrantedHandled = true;
+    if (!opts.debug)
+        return;
+    const debugContainer = document.createElement("div");
+    debugContainer.style.position = "fixed";
+    debugContainer.style.top = "0";
+    debugContainer.style.left = "0";
+    debugContainer.style.zIndex = "1000";
+    debugContainer.style.gap = "10px";
+    debugContainer.style.display = "flex";
+    if (opts.debug)
+        document.body.appendChild(debugContainer);
+    if ('xr' in navigator) {
+        debugContainer.appendChild(document.createTextNode("needle asap: handleSessionGranted"));
+        // WebXRViewer (based on Firefox) has a bug where addEventListener
+        // throws a silent exception and aborts execution entirely.
+        if (/WebXRViewer\//i.test(navigator.userAgent)) {
+            console.warn('WebXRViewer does not support addEventListener');
+            return;
+        }
+        const sessionGranted = async function () {
+            navigator.xr?.removeEventListener('sessiongranted', sessionGranted);
+            if (needleEngineHasLoaded()) {
+                debugContainer.appendChild(document.createTextNode("needle asap: Engine has already loaded"));
+                return;
+            }
+            if (globalThis["needle:XRSession"] != undefined) {
+                debugContainer.appendChild(document.createTextNode("needle asap: Session already requested"));
+                return;
+            }
+            console.log('needle asap: Session granted');
+            debugContainer.appendChild(document.createTextNode("Session granted"));
+            // request immersive VR session and store it in a global variable
+            const init = getDefaultSessionInit("immersive-vr");
+            const request = navigator.xr?.requestSession('immersive-vr', init);
+            globalThis["needle:XRSession"] = request?.catch((err) => {
+                console.error('needle asap: Session request failed', err);
+                debugContainer.appendChild(document.createTextNode("Session request failed: " + err.message));
+                return null;
+            });
+        };
+        navigator.xr?.addEventListener('sessiongranted', sessionGranted, { once: true });
+    }
+}
+//# sourceMappingURL=sessiongranted.js.map

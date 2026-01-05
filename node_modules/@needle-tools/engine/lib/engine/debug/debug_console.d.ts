@@ -1,0 +1,2 @@
+export declare function showDebugConsole(): void;
+export declare function hideDebugConsole(): void;

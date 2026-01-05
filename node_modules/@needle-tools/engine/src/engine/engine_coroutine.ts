@@ -1,0 +1,55 @@
+import { Context } from "./engine_setup.js";
+
+/** Wait for a number of seconds to pass.
+ * @param seconds
+ * @param context
+ * @returns Generator function
+ * @example
+ * ```typescript
+ * function *myCoroutineFunction() {
+ *   yield* WaitForSeconds(1);
+ * }
+ * ``` 
+ */
+export function* WaitForSeconds(seconds: number, context: Context | null = null) {
+    const time = context ? context.time : Context.Current.time;
+    const start = time.time;
+    while(time.time - start < seconds) {
+        yield;
+    }
+}
+
+/** Wait for a number of frames to pass.
+ * @param frames
+ * @returns Generator function
+ * @example
+ * ```typescript
+ * function *myCoroutineFunction() {
+ *    yield* WaitForFrames(10); 
+ * }
+ * ```
+ */
+export function* WaitForFrames(frames: number) {
+    for(let i = 0; i < frames; i++) {
+        yield;
+    }
+}
+
+/** Wait for a promise to resolve.
+ * @param promise
+ * @returns Generator function
+ * @example
+ * ```typescript
+ * function *myCoroutineFunction() {
+ *   yield* WaitForPromise(fetch("https://jsonplaceholder.typicode.com/todos/1"));
+ * }
+ * ```
+ */
+export function* WaitForPromise(promise: Promise<any>) {
+    let isRunning = true;
+    promise.then(() => isRunning = false);
+    promise.catch(() => isRunning = false);
+    while (isRunning) {
+        yield;
+    }
+}

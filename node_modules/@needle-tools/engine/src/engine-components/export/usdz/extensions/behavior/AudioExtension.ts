@@ -1,0 +1,103 @@
+import { Object3D } from "three";
+
+import { getParam } from "../../../../../engine/engine_utils.js";
+import { AudioSource } from "../../../../AudioSource.js";
+import { GameObject } from "../../../../Component.js";
+import type { IUSDExporterExtension } from "../../Extension.js";
+import { makeNameSafeForUSD,USDObject, USDWriter, USDZExporterContext } from "../../ThreeUSDZExporter.js";
+
+const debug = getParam("debugusdz");
+
+export class AudioExtension implements IUSDExporterExtension {
+
+    static getName(clip: string) {
+        const clipExt = clip.split(".").pop();
+        const fileWithoutExt = clip.split(".").slice(0, -1).join(".");
+        let clipName = fileWithoutExt.split("/").pop()?.replace(".", "_");
+        if (!clipName) {
+            clipName = "Audio_" + Math.random().toString(36).substring(2, 15);
+        }
+        return makeNameSafeForUSD(clipName) + "." + clipExt;
+    }
+
+    get extensionName(): string {
+        return "Audio";
+    }
+
+    private files = new Array<{ path: string, name: string }>();
+
+    onExportObject?(object: Object3D, model : USDObject, _context: USDZExporterContext) {
+        // check if this object has an audio source, add the relevant schema in that case.
+        const audioSources = GameObject.getComponents(object, AudioSource);
+        if (audioSources.length) {
+            for (const audioSource of audioSources) {
+                
+                if (!audioSource.clip) continue;
+                if(typeof audioSource.clip !== "string") continue;
+
+                // do nothing if this audio source is not set to play on awake - 
+                // should be controlled via PlayAudioOnClick instead then.
+                if (!audioSource.playOnAwake)
+                    continue;
+
+                const clipName = audioSource.clip.split("/").pop() || "Audio";
+                const safeClipNameWithExt = AudioExtension.getName(audioSource.clip);
+                const safeClipName = makeNameSafeForUSD(safeClipNameWithExt);
+
+                if (!this.files.some(f => f.path === audioSource.clip)) {
+                    this.files.push({ path: audioSource.clip, name: safeClipNameWithExt });
+
+                    const lowerCase = safeClipNameWithExt.toLowerCase();
+                    // Warn for non-supported audio formats.
+                    // See https://openusd.org/release/wp_usdaudio.html#id9
+                    if (_context.quickLookCompatible && 
+                        !lowerCase.endsWith(".mp3") && 
+                        !lowerCase.endsWith(".wav") &&
+                        !lowerCase.endsWith(".m4a")) {
+                        console.error("Audio file " + audioSource.clip + " from " + audioSource.name + " is not an MP3 or WAV file. QuickLook may not support playing it.");
+                    }
+                }
+                
+                // Turns out that in visionOS versions, using UsdAudio together with preliminary behaviours
+                // is not supported. So we need to NOT export SpatialAudio in those cases, and just rely
+                // on Preliminary_Behavior to play the audio.
+                if (!_context.quickLookCompatible)
+                {
+                    model.addEventListener('serialize', (writer: USDWriter, _context: USDZExporterContext) => {
+                        writer.appendLine();
+                        writer.beginBlock(`def SpatialAudio "${safeClipName}"`, "(", false );
+                        writer.appendLine(`displayName = "${clipName}"`);
+                        writer.closeBlock( ")" );
+                        writer.beginBlock();
+                        writer.appendLine(`uniform asset filePath = @audio/${safeClipNameWithExt}@`);
+                        writer.appendLine(`uniform token auralMode = "${ audioSource.spatialBlend > 0 ? "spatial" : "nonSpatial" }"`);
+                        // theoretically we could do timeline-like audio sequencing with this.
+                        writer.appendLine(`uniform token playbackMode = "${audioSource.loop ?  "loopFromStage" : "onceFromStart" }"`);
+                        writer.appendLine(`uniform float gain = ${audioSource.volume}`);
+                        writer.closeBlock();
+                    });
+                }
+            }
+        }
+    }
+
+    async onAfterSerialize(context: USDZExporterContext) {
+        // write the files to the context.
+        for (const file of this.files) {
+            const key = "audio/" + file.name;
+            if (context.files[key]) {
+                if(debug) console.warn("Audio file with name " + key + " already exists in the context. Skipping.");
+                continue;
+            }
+
+            // convert file (which is a path) to a blob.
+            const audio = await fetch(file.path);
+            const audioBlob = await audio.blob();
+            const arrayBuffer = await audioBlob.arrayBuffer();
+
+            const audioData: Uint8Array = new Uint8Array(arrayBuffer)
+
+            context.files[key] = audioData;
+        }
+    }
+}

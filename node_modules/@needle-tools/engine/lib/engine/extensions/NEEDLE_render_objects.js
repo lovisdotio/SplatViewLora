@@ -1,0 +1,160 @@
+import { AlwaysStencilFunc, DecrementStencilOp, DecrementWrapStencilOp, EqualStencilFunc, GreaterEqualStencilFunc, GreaterStencilFunc, IncrementStencilOp, IncrementWrapStencilOp, InvertStencilOp, KeepStencilOp, LessEqualStencilFunc, LessStencilFunc, 
+// stencil funcs
+NeverStencilFunc, NotEqualStencilFunc, ReplaceStencilOp, 
+// stencil ops
+ZeroStencilOp, } from "three";
+import { showBalloonWarning } from "../debug/index.js";
+import { isUsingInstancing } from "../engine_gameobject.js";
+import { isLocalNetwork } from "../engine_networking_utils.js";
+import { getParam } from "../engine_utils.js";
+const debug = getParam("debugstencil");
+function matchesLayer(stencilLayer, comp) {
+    return (stencilLayer & 1 << comp.layer) != 0;
+}
+const $stencils = Symbol("stencils");
+export class NEEDLE_render_objects {
+    get name() { return "NEEDLE_render_objects"; }
+    static stencils = {};
+    static applyStencil(obj) {
+        if (!obj)
+            return;
+        const source = obj.sourceId;
+        if (debug)
+            console.log(source, NEEDLE_render_objects.stencils);
+        if (!source)
+            return;
+        const settings = NEEDLE_render_objects.stencils[source];
+        if (!settings)
+            return;
+        for (let i = settings.length - 1; i >= 0; i--) {
+            const stencil = settings[i];
+            if (matchesLayer(stencil.layer, obj)) {
+                if (debug)
+                    console.log(stencil);
+                setTimeout(() => {
+                    if (isLocalNetwork() && isUsingInstancing(obj.gameObject)) {
+                        showBalloonWarning("Stencil not supported on instanced objects");
+                        console.warn("Stencil not supported on instanced objects", obj);
+                    }
+                }, 500);
+                for (let i = 0; i < obj.sharedMaterials.length; i++) {
+                    let mat = obj.sharedMaterials[i];
+                    if (mat) {
+                        // if (!mat[$stencils]) 
+                        mat = mat.clone();
+                        mat[$stencils] = true;
+                        mat.stencilWrite = true;
+                        mat.stencilWriteMask = 255;
+                        mat.stencilFuncMask = 255;
+                        mat.stencilRef = stencil.value;
+                        mat.stencilFunc = stencil.compareFunc;
+                        mat.stencilZPass = stencil.passOp;
+                        mat.stencilFail = stencil.failOp;
+                        mat.stencilZFail = stencil.zFailOp;
+                        obj.sharedMaterials[i] = mat;
+                    }
+                }
+                // you can have 50 renderer features per event until this breaks
+                obj.gameObject.renderOrder = stencil.event * 1000 + stencil.index * 50;
+                break;
+            }
+        }
+    }
+    parser;
+    source;
+    constructor(parser, source) {
+        this.parser = parser;
+        this.source = source;
+    }
+    afterRoot(_result) {
+        const extensions = this.parser.json.extensions;
+        if (extensions) {
+            const ext = extensions[EXTENSION_NAME];
+            if (ext) {
+                if (debug)
+                    console.log(ext);
+                const stencils = ext.stencil;
+                if (stencils && Array.isArray(stencils)) {
+                    for (const stencil of stencils) {
+                        const obj = { ...stencil };
+                        obj.compareFunc = ToThreeCompareFunction(obj.compareFunc);
+                        obj.passOp = ToThreeStencilOp(obj.passOp);
+                        obj.failOp = ToThreeStencilOp(obj.failOp);
+                        obj.zFailOp = ToThreeStencilOp(obj.zFailOp);
+                        if (!NEEDLE_render_objects.stencils[this.source])
+                            NEEDLE_render_objects.stencils[this.source] = [];
+                        NEEDLE_render_objects.stencils[this.source].push(obj);
+                    }
+                }
+            }
+        }
+        return null;
+    }
+}
+var StencilOp;
+(function (StencilOp) {
+    StencilOp[StencilOp["Keep"] = 0] = "Keep";
+    StencilOp[StencilOp["Zero"] = 1] = "Zero";
+    StencilOp[StencilOp["Replace"] = 2] = "Replace";
+    StencilOp[StencilOp["IncrementSaturate"] = 3] = "IncrementSaturate";
+    StencilOp[StencilOp["DecrementSaturate"] = 4] = "DecrementSaturate";
+    StencilOp[StencilOp["Invert"] = 5] = "Invert";
+    StencilOp[StencilOp["IncrementWrap"] = 6] = "IncrementWrap";
+    StencilOp[StencilOp["DecrementWrap"] = 7] = "DecrementWrap";
+})(StencilOp || (StencilOp = {}));
+var CompareFunction;
+(function (CompareFunction) {
+    CompareFunction[CompareFunction["Disabled"] = 0] = "Disabled";
+    CompareFunction[CompareFunction["Never"] = 1] = "Never";
+    CompareFunction[CompareFunction["Less"] = 2] = "Less";
+    CompareFunction[CompareFunction["Equal"] = 3] = "Equal";
+    CompareFunction[CompareFunction["LessEqual"] = 4] = "LessEqual";
+    CompareFunction[CompareFunction["Greater"] = 5] = "Greater";
+    CompareFunction[CompareFunction["NotEqual"] = 6] = "NotEqual";
+    CompareFunction[CompareFunction["GreaterEqual"] = 7] = "GreaterEqual";
+    CompareFunction[CompareFunction["Always"] = 8] = "Always";
+})(CompareFunction || (CompareFunction = {}));
+function ToThreeStencilOp(op) {
+    switch (op) {
+        case StencilOp.Keep:
+            return KeepStencilOp;
+        case StencilOp.Zero:
+            return ZeroStencilOp;
+        case StencilOp.Replace:
+            return ReplaceStencilOp;
+        case StencilOp.IncrementSaturate:
+            return IncrementStencilOp;
+        case StencilOp.DecrementSaturate:
+            return DecrementStencilOp;
+        case StencilOp.IncrementWrap:
+            return IncrementWrapStencilOp;
+        case StencilOp.DecrementWrap:
+            return DecrementWrapStencilOp;
+        case StencilOp.Invert:
+            return InvertStencilOp;
+    }
+    return 0;
+}
+function ToThreeCompareFunction(func) {
+    switch (func) {
+        case CompareFunction.Never:
+            return NeverStencilFunc;
+        case CompareFunction.Less:
+            return LessStencilFunc;
+        case CompareFunction.Equal:
+            return EqualStencilFunc;
+        case CompareFunction.LessEqual:
+            return LessEqualStencilFunc;
+        case CompareFunction.Greater:
+            return GreaterStencilFunc;
+        case CompareFunction.NotEqual:
+            return NotEqualStencilFunc;
+        case CompareFunction.GreaterEqual:
+            return GreaterEqualStencilFunc;
+        case CompareFunction.Always:
+            return AlwaysStencilFunc;
+    }
+    return NeverStencilFunc;
+}
+export const EXTENSION_NAME = "NEEDLE_render_objects";
+//# sourceMappingURL=NEEDLE_render_objects.js.map

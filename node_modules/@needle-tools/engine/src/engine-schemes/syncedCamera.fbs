@@ -1,0 +1,11 @@
+include "vec.fbs";
+
+table SyncedCameraModel {
+    user_id:string;
+    guid:string;
+    dont_save:bool;
+    pos:Vec3;
+    rot:Vec3;
+}
+
+root_type SyncedCameraModel;

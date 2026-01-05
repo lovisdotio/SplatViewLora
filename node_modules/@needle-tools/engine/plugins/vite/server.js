@@ -1,0 +1,67 @@
+/**
+ * Can open the network server in the browser
+ * @param {string} command
+ * @param {import('../types').needleMeta | null} config
+ * @param {import('../types').userSettings} userSettings
+ */
+export const needleServer = (command, config, userSettings) => {
+
+    const shouldOpenBrowser = userSettings.openBrowser === true;
+
+    /**
+     * @type {import("vite").UserConfig}
+     */
+    return {
+        name: 'needle:server',
+        config(config) {
+            // if this plugin is used to open the browser we want to make sure "open" in the vite config is set to false
+            if (shouldOpenBrowser) {
+                console.log("[needle:server] Setting 'open: false' in vite server config because 'openBrowser' is enabled in needlePlugins")
+                return {
+                    ...config,
+                    server: {
+                        ...config.server,
+                        open: false
+                    }
+                }
+            }
+        },
+        /**
+         * @param {import("vite").ViteDevServer} server
+         */
+        async configureServer(server) {
+            if (shouldOpenBrowser) {
+                console.log('[needle:server] Waiting for server...')
+                const i = setInterval(() => {
+                    // https://github.com/vitejs/vite/blob/e861168f476b8cb278f599a0341076b0511c5264/packages/vite/src/node/preview.ts#L231
+                    const resolvedUrls = server.resolvedUrls;
+                    if (resolvedUrls) {
+                        // stop trying when the urls are resolved
+                        clearInterval(i);
+                        let urlToOpen = null;
+                        // check if the network urls are available and attempt to open the first one
+                        const networkUrls = resolvedUrls.network;
+                        if (Array.isArray(networkUrls) && networkUrls.length > 0) {
+                            const networkUrl = networkUrls[0];
+                            // perhaps we can just use the vite code here: https://github.com/vitejs/vite/blob/e861168f476b8cb278f599a0341076b0511c5264/packages/vite/src/node/server/openBrowser.ts#L72
+                            console.log('[needle:server] Opening network URL: ' + networkUrl)
+                            urlToOpen = networkUrl;
+                        }
+                        else {
+                            const local = resolvedUrls.local;
+                            if (local?.length) {
+                                console.log('[needle:server] Opening local URL: ' + local)
+                                urlToOpen = local;
+                            }
+                        }
+                        import("open")
+                            .then((mod) => {
+                                mod.default(urlToOpen);
+                            })
+                            .catch((err) => console.error("ERR: [needle:server] 'open' package not found - please make sure to install 'open' in your package.json\n", err));
+                    }
+                }, 100)
+            }
+        },
+    }
+};

@@ -1,0 +1,117 @@
+import { Quaternion, Vector2, Vector3, Vector4 } from "three";
+import { isDevEnvironment, LogType, showBalloonMessage } from "./debug/index.js";
+import { $isAssigningProperties } from "./engine_serialization_core.js";
+import { watchWrite } from "./engine_utils.js";
+/** create accessor callbacks for a field */
+export const validate = function (set, get) {
+    // "descriptor : undefined" prevents @validate() to be added to property getters or setters
+    return function (target, propertyKey, descriptor) {
+        createPropertyWrapper(target, propertyKey, descriptor, set, get);
+    };
+};
+function createPropertyWrapper(target, _propertyKey, descriptor, set, get) {
+    if (!get && !set && !target.onValidate)
+        return;
+    // this is not undefined when its a property getter or setter already and not just a field
+    // we currently only support validation of fields
+    if (descriptor !== undefined) {
+        console.error("Invalid usage of validate decorator. Only fields can be validated.", target, _propertyKey, descriptor);
+        showBalloonMessage("Invalid usage of validate decorator. Only fields can be validated. Property: " + _propertyKey, LogType.Error);
+        return;
+    }
+    let propertyKey = "";
+    if (typeof _propertyKey === "string")
+        propertyKey = _propertyKey;
+    else
+        propertyKey = _propertyKey.name;
+    if (target.__internalAwake) {
+        // this is the hidden key we save the original property to
+        const $prop = Symbol(propertyKey);
+        // save the original awake method
+        // we need to delay decoration until the object has been created
+        const awake = target.__internalAwake;
+        target.__internalAwake = function () {
+            if (!this.onValidate) {
+                if (isDevEnvironment())
+                    console.warn("Usage of @validate decorate detected but there is no onValidate method in your class: \"" + target.constructor?.name + "\"");
+                return;
+            }
+            // only build wrapper once per type
+            if (this[$prop] === undefined) {
+                // make sure the field is initialized in a hidden property
+                this[$prop] = this[propertyKey];
+                // For complex types we need to watch the write operation (the underlying values)
+                // Since the object itself doesnt change (normally)
+                // This is relevant if we want to use @validate() on e.g. a Vector3 which is animated from an animationclip
+                const _val = this[propertyKey];
+                if (_val instanceof Vector2 ||
+                    _val instanceof Vector3 ||
+                    _val instanceof Vector4 ||
+                    _val instanceof Quaternion) {
+                    const vec = this[propertyKey];
+                    const cb = () => { this.onValidate(propertyKey); };
+                    watchWrite(vec, cb);
+                }
+                Object.defineProperty(this, propertyKey, {
+                    set: function (v) {
+                        if (this[$isAssigningProperties] === true) {
+                            this[$prop] = v;
+                        }
+                        else {
+                            set?.call(this, v);
+                            const oldValue = this[$prop];
+                            this[$prop] = v;
+                            this.onValidate?.call(this, propertyKey, oldValue);
+                        }
+                    },
+                    get: function () {
+                        get?.call(this);
+                        return this[$prop];
+                    },
+                });
+            }
+            // call the original awake method
+            awake.call(this);
+        };
+    }
+}
+/** Experimental attribute
+ * Use to hook into another type's methods and run before the other methods run (similar to Harmony prefixes).
+ * Return false to prevent the original method from running.
+ */
+export const prefix = function (type) {
+    return function (target, _propertyKey, _PropertyDescriptor) {
+        let propertyKey = "";
+        if (typeof _propertyKey === "string")
+            propertyKey = _propertyKey;
+        else
+            propertyKey = _propertyKey.name;
+        const targetType = type.prototype;
+        const originalProp = Object.getOwnPropertyDescriptor(targetType, propertyKey);
+        if (!originalProp?.value) {
+            console.warn("Can not apply prefix: type does not have method named", _propertyKey, type);
+            return;
+        }
+        const originalValue = originalProp.value;
+        const prefix = target[propertyKey];
+        Object.defineProperty(targetType, propertyKey, {
+            value: function (...args) {
+                const res = prefix?.call(this, ...args);
+                // If the prefix method is async we need to check if the user returned false
+                // In which case we don't want to call the original method
+                if (res instanceof Promise) {
+                    res.then((r) => {
+                        if (r === false)
+                            return;
+                        return originalValue.call(this, ...args);
+                    });
+                    return;
+                }
+                if (res === false)
+                    return;
+                return originalValue.call(this, ...args);
+            },
+        });
+    };
+};
+//# sourceMappingURL=engine_util_decorator.js.map

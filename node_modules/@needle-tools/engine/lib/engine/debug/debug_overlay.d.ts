@@ -1,0 +1,22 @@
+export declare enum LogType {
+    Log = 0,
+    Warn = 1,
+    Error = 2
+}
+export declare function getErrorCount(): number;
+/** Register callback when a new error happens */
+export declare function onError(cb: (...args: any[]) => void): void;
+/** Unregister error callback */
+export declare function offError(cb: (...args: any[]) => void): void;
+/** Set false to prevent overlay messages from being shown */
+export declare function setAllowBalloonMessages(allow: boolean): void;
+/**
+ * @deprecated Use {@link setAllowBalloonMessages} instead
+ */
+export declare function setAllowOverlayMessages(allow: boolean): void;
+export declare function makeErrorsVisibleForDevelopment(): void;
+export declare function addLog(type: LogType, message: string | any[], _file?: string | null, _line?: number | null): void;
+/**
+ * Clear all overlay messages from the screen
+ */
+export declare function clearMessages(): void;

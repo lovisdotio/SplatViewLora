@@ -1,0 +1,12 @@
+import * as flatbuffers from 'flatbuffers';
+import { Vec3 } from './vec3.js';
+export declare class Transform {
+    bb: flatbuffers.ByteBuffer | null;
+    bb_pos: number;
+    __init(i: number, bb: flatbuffers.ByteBuffer): Transform;
+    position(obj?: Vec3): Vec3 | null;
+    rotation(obj?: Vec3): Vec3 | null;
+    scale(obj?: Vec3): Vec3 | null;
+    static sizeOf(): number;
+    static createTransform(builder: flatbuffers.Builder, position_x: number, position_y: number, position_z: number, rotation_x: number, rotation_y: number, rotation_z: number, scale_x: number, scale_y: number, scale_z: number): flatbuffers.Offset;
+}

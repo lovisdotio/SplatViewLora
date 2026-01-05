@@ -1,0 +1,28 @@
+const $objectAnimationKey = Symbol("objectIsAnimatedData");
+/** Internal method - This marks an object as being animated. Make sure to always call isAnimated=false if you stop animating the object
+ * @param obj The object to mark
+ * @param isAnimated Whether the object is animated or not
+ */
+export function setObjectAnimated(obj, animatedBy, isAnimated) {
+    if (!obj)
+        return;
+    if (obj[$objectAnimationKey] === undefined) {
+        if (!isAnimated)
+            return;
+        obj[$objectAnimationKey] = new Set();
+    }
+    const set = obj[$objectAnimationKey];
+    if (isAnimated) {
+        set.add(animatedBy);
+    }
+    else if (set.has(animatedBy))
+        set.delete(animatedBy);
+}
+/** Get is the object is currently animated. Currently used by the Animator to check if a timeline animationtrack is actively animating an object */
+export function getObjectAnimated(obj) {
+    if (!obj)
+        return false;
+    const set = obj[$objectAnimationKey];
+    return set !== undefined && set.size > 0;
+}
+//# sourceMappingURL=AnimationUtils.js.map

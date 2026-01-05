@@ -1,0 +1,77 @@
+
+import { Context, destroy, loadSync } from "@needle-tools/engine"
+
+// for testing import in main.ts like so:
+// import "@needle-tools/engine/plugins/vite/drop-client.js"
+
+if (import.meta?.hot) {
+
+    const previouslyLoaded = [];
+    import.meta.hot.on("needle-editor:exported-file", async msg => {
+        try {
+            console.log(msg);
+            const ctx = Context.Current;
+            for (const prev of previouslyLoaded) {
+                destroy(prev, true, true);
+            }
+            previouslyLoaded.length = 0;
+            const path = msg.path;
+            const glb = await loadSync(ctx, path);
+            previouslyLoaded.push(glb.scene);
+            console.log(glb);
+            ctx.scene.add(glb.scene);
+        }
+        catch (err) {
+            console.error(err);
+        }
+    })
+
+    function isNeedleCanvas(target) {
+        if (target instanceof HTMLCanvasElement) {
+            return true
+        }
+        return false;
+    }
+
+    window.addEventListener('dragover', e => {
+        if (!isNeedleCanvas(e.target)) return;
+        if (!e.dataTransfer) return;
+        for (const type of e.dataTransfer.types) {
+            if (type === "Files") {
+                e.preventDefault();
+            }
+        }
+    });
+
+    window.addEventListener('drop', (e) => {
+        if (!isNeedleCanvas(e.target)) return;
+
+        for (const file of e.dataTransfer.files) {
+            if (file.name.endsWith(".prefab") ||
+                file.name.endsWith(".fbx") ||
+                file.name.endsWith(".gltf") ||
+                file.name.endsWith(".glb") ||
+                file.name.endsWith(".obj") ||
+                file.name.endsWith(".mat")) {
+                console.log("Dropped file: " + file.name)
+                e.preventDefault();
+
+                const data = {
+                    name: file.name,
+                    size: file.size,
+                    lastModified: file.lastModified,
+                    location: undefined
+                };
+
+                const hits = Context.Current?.physics.raycast();
+                if (hits?.length) {
+                    data.location = hits[0].point;
+                }
+
+                // Notify vite -> export file -> wait for export response with path -> load file
+                import.meta.hot.send("needle:drop-file", data);
+            }
+        }
+
+    });
+}

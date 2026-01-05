@@ -1,0 +1,4 @@
+/**
+ * @internal
+ * Ensure the audio context is resumed if it gets suspended or interrupted */
+export declare function ensureAudioContextIsResumed(): void;

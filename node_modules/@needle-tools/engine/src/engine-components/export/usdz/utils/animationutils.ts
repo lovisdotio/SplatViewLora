@@ -1,0 +1,192 @@
+import { AnimationClip,Object3D } from "three";
+
+import { getParam } from "../../../../engine/engine_utils.js";
+import { Animation } from "../../../Animation.js";
+import { Animator } from "../../../Animator.js";
+import { AudioSource } from "../../../AudioSource.js";
+import { GameObject } from "../../../Component.js";
+import type { AnimationExtension } from "../extensions/Animation.js";
+import type { AudioExtension } from "../extensions/behavior/AudioExtension.js";
+import { PlayAnimationOnClick, PlayAudioOnClick } from "../extensions/behavior/BehaviourComponents.js";
+import { ActionBuilder,BehaviorModel, TriggerBuilder } from "../extensions/behavior/BehavioursBuilder.js";
+
+const debug = getParam("debugusdz");
+
+export function registerAnimatorsImplictly(root: Object3D, ext: AnimationExtension): Array<Object3D> {
+
+    // TODO: currently we're simply appending all animations to each other.
+    // We are not currently emitting PlayAnimation actions that would make sure
+    // that only a specific clip or a set of clips is playing.
+    
+    // Better would be to scratch the functionality here entirely, and instead
+    // inject PlayAnimationOnStart actions. This way, animations can loop independently, and
+    // Animator state chaining would be respected out-of-the-box.
+    // For non-QuickLook USDZ export it's still useful to have implicit registration per root.
+
+    // collect animators and their clips
+    const animationClips: { root: Object3D, clips: AnimationClip[] }[] = [];
+    const animators = GameObject.getComponentsInChildren(root, Animator);
+    const animationComponents = GameObject.getComponentsInChildren(root, Animation);
+    const animatorsWithPlayAtStart = new Array<Animator | Animation>();
+
+    const constructedObjects = new Array<Object3D>();
+
+    if (ext.injectImplicitBehaviours) {
+        // We're registering animators with implicit PlayAnimationOnClick (with hacked "start" trigger) here.
+        for (const animator of animators) {
+            if (!animator || !animator.runtimeAnimatorController || !animator.enabled) continue;
+            const activeState = animator.runtimeAnimatorController.activeState;
+
+            // skip missing data, empty states or motions
+            if (!activeState) continue;
+            if (!activeState.motion || !activeState.motion.clip) continue;
+            if (activeState.motion.clip.tracks?.length < 1) continue;
+            // We could skip if the current state has already ended playing
+            // but there's an edge case where we'd do this exactly in a transition,
+            // and also it's a bit weird when someone has watched the animation in the browser already
+            // and then it doesn't play in AR, so this is disabled for now.
+            // if (animator.getCurrentStateInfo()?.normalizedTime == 1) continue;
+            
+            if (animatorsWithPlayAtStart.includes(animator)) continue;
+
+            // Create a PlayAnimationOnClick component that will play the animation on start
+            // This is a bit hacky right now (we're using the internal "start" trigger)
+            const newComponent = new PlayAnimationOnClick();
+            newComponent.animator = animator;
+            newComponent.stateName = activeState.name;
+            newComponent.trigger = "start";
+            newComponent.name = "PlayAnimationOnClick_implicitAtStart_" + newComponent.stateName;
+            const go = new Object3D();
+            GameObject.addComponent(go, newComponent);
+            constructedObjects.push(go);
+            
+            animatorsWithPlayAtStart.push(animator);
+
+            // the behaviour can be anywhere in the hierarchy
+            root.add(go);
+        }
+
+        // TODO add Animation handling, otherwise multi-animation files
+        // directly loaded from GLB may glitch due to the added rest poses
+    }
+    else {
+        for (const animator of animators) {
+            if (!animator || !animator.runtimeAnimatorController || !animator.enabled) continue;
+
+            if (debug) console.log(animator);
+
+            const clips: AnimationClip[] = [];
+
+            for (const action of animator.runtimeAnimatorController.enumerateActions()) {
+                if (debug)
+                    console.log(action);
+                const clip = action.getClip();
+
+                if (!clips.includes(clip))
+                    clips.push(clip);
+            }
+
+            animationClips.push({ root: animator.gameObject, clips: clips });
+        }
+    }
+
+    // TODO once PlayAnimationOnClick can use animation components as well,
+    // we can treat them the same as we treat Animators above.
+    if (ext.injectImplicitBehaviours) {
+        for (const animationComponent of animationComponents) {
+            if (!animationComponent || !animationComponent.clip ||!animationComponent.enabled) continue;
+            if (!animationComponent.playAutomatically) continue;
+            if (animatorsWithPlayAtStart.includes(animationComponent)) continue;
+
+            // Create a PlayAnimationOnClick component that will play the animation on start
+            // This is a bit hacky right now (we're using the internal "start" trigger)
+            const newComponent = new PlayAnimationOnClick();
+            newComponent.animation = animationComponent;
+            newComponent.stateName = animationComponent.clip.name;
+            newComponent.trigger = "start";
+            newComponent.name = "PlayAnimationOnClick_implicitAtStart_" + newComponent.stateName;
+            const go = new Object3D();
+            GameObject.addComponent(go, newComponent);
+            constructedObjects.push(go);
+
+            animatorsWithPlayAtStart.push(animationComponent);
+
+            // the behaviour can be anywhere in the hierarchy
+            root.add(go);
+        }
+    }
+    else {
+        for (const animationComponent of animationComponents) {
+            if (debug)
+                console.log(animationComponent);
+
+            const clips: AnimationClip[] = [];
+
+            for (const clip of animationComponent.animations) {
+                if (!clips.includes(clip))
+                    clips.push(clip);
+            }
+
+            animationClips.push({ root: animationComponent.gameObject, clips: clips });
+        }
+    }
+    
+    if (debug && animationClips?.length > 0) console.log("USDZ Animation Clips without behaviours", animationClips);
+
+    for (const pair of animationClips) {
+        for (const clip of pair.clips)
+            ext.registerAnimation(pair.root, clip);
+    }
+
+    return constructedObjects;
+}
+
+export function registerAudioSourcesImplictly(root: Object3D, _ext: AudioExtension): Array<Object3D> {
+    const audioSources = GameObject.getComponentsInChildren(root, AudioSource);
+    const playAudioOnClicks = GameObject.getComponentsInChildren(root, PlayAudioOnClick);
+    const audioWithPlayAtStart = new Array<AudioSource>();
+
+    
+    const constructedObjects = new Array<Object3D>();
+
+    if (debug) {
+        console.log({ audioSources, playAudioOnClicks });
+    }
+    
+    // Remove all audio sources that are already referenced from existing PlayAudioOnClick components
+    for (const player of playAudioOnClicks) {
+        if (!player.target) continue;
+        const index = audioSources.indexOf(player.target);
+        if (index > -1) audioSources.splice(index, 1);
+    }
+
+    // for the remaning ones, we want to build a PlayAudioOnClick component
+    for (const audioSource of audioSources) {
+        if (!audioSource || !audioSource.clip) continue;
+        if (audioSource.volume <= 0) continue;
+        if (audioWithPlayAtStart.includes(audioSource)) continue;
+
+        const newComponent = new PlayAudioOnClick();
+        newComponent.target = audioSource;
+        newComponent.name = "PlayAudioOnClick_implicitAtStart_";
+        newComponent.trigger = "start";
+        const go = new Object3D();
+        GameObject.addComponent(go, newComponent);
+        console.log("implicit PlayAudioOnStart", go, newComponent);
+        constructedObjects.push(go);
+
+        audioWithPlayAtStart.push(audioSource);
+
+        root.add(go);
+    }
+
+    return constructedObjects;
+}
+
+export function disableObjectsAtStart(objects: Array<Object3D>) {
+    const newComponent = new BehaviorModel("DisableAtStart",
+        TriggerBuilder.sceneStartTrigger(),
+        ActionBuilder.fadeAction(objects, 0, false),
+    )
+    return newComponent;
+}

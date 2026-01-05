@@ -1,0 +1,13 @@
+import { type Constructor, type IComponent } from "./engine_types.js";
+declare type setter = (v: any) => void;
+declare type getter = () => any;
+/** create accessor callbacks for a field */
+export declare const validate: (set?: setter, get?: getter) => (target: IComponent | any, propertyKey: string, descriptor?: undefined) => void;
+/** Experimental attribute
+ * Use to hook into another type's methods and run before the other methods run (similar to Harmony prefixes).
+ * Return false to prevent the original method from running.
+ */
+export declare const prefix: <T>(type: Constructor<T>) => (target: IComponent | any, _propertyKey: string | {
+    name: string;
+}, _PropertyDescriptor: PropertyDescriptor) => void;
+export {};

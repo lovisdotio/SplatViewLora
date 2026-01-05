@@ -1,0 +1,32 @@
+import { type Context, FrameEvent } from "./engine_context.js";
+import { ContextEvent } from "./engine_context_registry.js";
+export declare type Event = ContextEvent | FrameEvent;
+declare type LifecycleHookContext = {
+    context: Context;
+};
+/**
+ * A function that can be called during the Needle Engine frame event at a specific point
+ * @link https://engine.needle.tools/docs/scripting.html#special-lifecycle-hooks
+ */
+export declare type LifecycleMethod = (this: LifecycleHookContext, ctx: Context) => void;
+/**
+ * Options for `onStart(()=>{})` etc event hooks
+ * @link https://engine.needle.tools/docs/scripting.html#special-lifecycle-hooks
+ */
+export declare type LifecycleMethodOptions = {
+    /**
+     * If true, the callback will only be called once
+     */
+    once?: boolean;
+};
+/** register a function to be called during the Needle Engine frame event at a specific point
+ * @param cb the function to call
+ * @param evt the event to call the function at
+ */
+export declare function registerFrameEventCallback(cb: LifecycleMethod, evt: Event, opts?: LifecycleMethodOptions): void;
+/**
+ * unregister a function to be called during the Needle Engine frame event at a specific point
+ */
+export declare function unregisterFrameEventCallback(cb: LifecycleMethod, evt: Event): void;
+export declare function invokeLifecycleFunctions(ctx: Context, evt: Event): void;
+export {};

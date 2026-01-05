@@ -1,0 +1,253 @@
+import { Color, DataTexture, FileLoader, RGBAFormat, Vector4 } from "three";
+import * as loader from "./engine_fileloader.js";
+import { Mathf } from "./engine_math.js";
+const white = new Uint8Array(4);
+white[0] = 255;
+white[1] = 255;
+white[2] = 255;
+white[3] = 255;
+export const whiteDefaultTexture = new DataTexture(white, 1, 1, RGBAFormat);
+/**
+ * Creates a new texture with a single color
+ * @param col Color to use
+ * @param size Size of the texture
+ * @returns A texture with the specified color
+ */
+export function createFlatTexture(col, size = 1) {
+    const hasAlpha = "alpha" in col;
+    const length = size * size;
+    const data = new Uint8Array(4 * length);
+    const r = Math.floor(col.r * 255);
+    const g = Math.floor(col.g * 255);
+    const b = Math.floor(col.b * 255);
+    for (let i = 0; i < length; i++) {
+        const k = i * 4;
+        data[k + 0] = r;
+        data[k + 1] = g;
+        data[k + 2] = b;
+        if (hasAlpha)
+            data[k + 3] = Math.floor(col.alpha * 255);
+        else
+            data[k + 3] = 255;
+    }
+    const tex = new DataTexture(data, size, size);
+    tex.needsUpdate = true;
+    return tex;
+}
+/**
+ * Creates a new texture with three colors
+ * @param col0 First color
+ * @param col1 Second color
+ * @param col2 Third color
+ * @param width Width of the texture
+ * @param height Height of the texture
+ * @returns A texture with the specified colors
+ */
+export function createTrilightTexture(col0, col1, col2, width = 1, height = 3) {
+    const hasAlpha = false; // "alpha" in col0;
+    const channels = 4;
+    const length = width * height;
+    const colors = [col0, col1, col2];
+    const colorCount = colors.length;
+    const data = new Uint8Array(channels * colorCount * length);
+    const col = new Color();
+    for (let y = 0; y < height; y++) {
+        const colorIndex = Math.floor(y / height * colorCount);
+        const nextIndex = Mathf.clamp(colorIndex + 1, 0, colorCount - 1);
+        const col0 = colors[colorIndex];
+        const col1 = colors[nextIndex];
+        const t = (y / height * colorCount) % 1;
+        col.lerpColors(col0, col1, t);
+        const r = Math.floor(col.r * 255);
+        const g = Math.floor(col.g * 255);
+        const b = Math.floor(col.b * 255);
+        for (let x = 0; x < width; x++) {
+            const k = (y * width + x) * channels;
+            data[k + 0] = r;
+            data[k + 1] = g;
+            data[k + 2] = b;
+            data[k + 3] = 255;
+        }
+    }
+    const tex = new DataTexture(data, width, height);
+    tex.needsUpdate = true;
+    return tex;
+}
+/** @internal */
+export var Stage;
+(function (Stage) {
+    Stage[Stage["Vertex"] = 0] = "Vertex";
+    Stage[Stage["Fragment"] = 1] = "Fragment";
+})(Stage || (Stage = {}));
+/** @internal */
+export class UnityShaderStage {
+    stage;
+    code;
+    constructor(stage, code) {
+        this.stage = stage;
+        this.code = code;
+    }
+}
+class ShaderLib {
+    loaded = new Map();
+    async loadShader(url) {
+        // TODO: cache this
+        const text = await loader.loadFileAsync(url);
+        const shader = JSON.parse(text);
+        return shader;
+    }
+    async load(stage, url) {
+        if (this.loaded.has(url)) {
+            return new Promise((res, rej) => {
+                const obj = this.loaded.get(url);
+                if (obj)
+                    res(obj);
+                else
+                    rej("Shader not found");
+            });
+        }
+        const text = await loader.loadFileAsync(url);
+        const entry = new UnityShaderStage(stage, text);
+        this.loaded.set(url, entry);
+        return entry;
+    }
+}
+/** @internal */
+export const lib = new ShaderLib();
+/** @internal */
+export function ToUnityMatrixArray(mat, buffer) {
+    const arr = mat.elements;
+    if (!buffer)
+        buffer = [];
+    buffer.length = 0;
+    for (let i = 0; i < 16; i += 4) {
+        const col1 = arr[i];
+        const col2 = arr[i + 1];
+        const col3 = arr[i + 2];
+        const col4 = arr[i + 3];
+        const el = new Vector4(col1, col2, col3, col4);
+        buffer.push(el);
+    }
+    return buffer;
+}
+const noAmbientLight = [];
+const copyBuffer = [];
+/** @internal */
+export function SetUnitySphericalHarmonics(obj, array) {
+    if (noAmbientLight.length === 0) {
+        for (let i = 0; i < 27; i++)
+            noAmbientLight.push(0);
+    }
+    if (!array)
+        array = noAmbientLight;
+    // array = noAmbientLight;
+    for (let i = 0; i < 27; i++)
+        copyBuffer[i] = array[i]; //Math.sqrt(Math.pow(Math.PI,2)*6);//1 / Math.PI;
+    array = copyBuffer;
+    // 18 is too bright with probe.sh.coefficients[6] = new Vector3(1,0,0);
+    // 24 is too bright with probe.sh.coefficients[8] = new Vector3(1,0,0);
+    obj["unity_SHAr"] = { value: new Vector4(array[9], array[3], array[6], array[0]) };
+    obj["unity_SHBr"] = { value: new Vector4(array[12], array[15], array[18], array[21]) };
+    obj["unity_SHAg"] = { value: new Vector4(array[10], array[4], array[7], array[1]) };
+    obj["unity_SHBg"] = { value: new Vector4(array[13], array[16], array[19], array[22]) };
+    obj["unity_SHAb"] = { value: new Vector4(array[11], array[5], array[8], array[2]) };
+    obj["unity_SHBb"] = { value: new Vector4(array[14], array[17], array[20], array[23]) };
+    obj["unity_SHC"] = { value: new Vector4(array[24], array[25], array[26], 1) };
+}
+/** @internal */
+export class ShaderBundle {
+    vertexShader;
+    fragmentShader;
+    technique;
+    constructor(vertexShader, fragmentShader, technique) {
+        this.vertexShader = vertexShader;
+        this.fragmentShader = fragmentShader;
+        this.technique = technique;
+    }
+}
+/** @internal */
+export async function FindShaderTechniques(shaderData, id) {
+    // console.log(shaderData);
+    if (!shaderData) {
+        console.error("Can not find technique: no shader data");
+        return null;
+    }
+    const program = shaderData.programs[id];
+    const vertId = program.vertexShader;
+    const fragId = program.fragmentShader;
+    if (vertId !== undefined && fragId !== undefined) {
+        const vertShader = shaderData.shaders[vertId];
+        const fragShader = shaderData.shaders[fragId];
+        // fragShader.uri = "./assets/frag.glsl";
+        // vertShader.uri = "./assets/vert.glsl";
+        if (vertShader.uri && fragShader.uri || vertShader.code && fragShader.code) {
+            // decode uri
+            // TODO: save inflight promises and use those 
+            if (!vertShader.code && vertShader.uri)
+                await loadShaderCode(vertShader);
+            if (!fragShader.code && fragShader.uri)
+                await loadShaderCode(fragShader);
+            if (!vertShader.code || !fragShader.code)
+                return null;
+            // patchVertexShaderCode(vertShader);
+            // patchFragmentShaderCode(fragShader);
+            // console.log(id, vertShader.name, fragShader.name, shaderData);
+            const technique = shaderData.techniques[id];
+            return new ShaderBundle(vertShader.code, fragShader.code, technique);
+        }
+    }
+    console.error("Shader technique not found", id);
+    return null;
+}
+/** @internal */
+async function loadShaderCode(shader) {
+    const uri = shader.uri;
+    if (!uri)
+        return;
+    if (uri.endsWith(".glsl")) {
+        // console.log(uri);
+        const loader = new FileLoader();
+        const code = await loader.loadAsync(uri);
+        shader.code = code.toString();
+        // console.log("FILE", code);
+    }
+    else {
+        shader.code = b64DecodeUnicode(shader.uri);
+        // console.log("DECODED", shader.code);
+    }
+}
+/*
+function patchFragmentShaderCode(shader: SHADERDATA.Shader) {
+    // reroute texture fetch to our custom one
+    shader.code = shader.code!.replaceAll("texture(", "_texture(");
+    // flip UV.y coordinate on texture fetch
+    shader.code = shader.code.replace("void main()\r\n{", `
+vec4 _texture(sampler2D a, vec2 b, float c) {
+    b.y = 1. - b.y;
+    return texture(a,b,c);
+}
+vec4 _texture(sampler2D a, vec2 b) {
+    b.y = 1. - b.y;
+    return texture(a,b);
+}
+void main()
+{`);
+}
+
+function patchVertexShaderCode(shader: SHADERDATA.Shader) {
+    // flip UV.y coordinate that goes into the shader
+    shader.code = shader.code!.replace(" = uv;", ` = vec4(uv.x, 1. - uv.y, uv.z, uv.w);`);
+    // flip pos.x coordinate for Object Space (coordinate system X is flipped)
+    // TODO not sure if xlat0 is always object space... most likely not
+    shader.code = shader.code!.replace("= u_xlat0.xyz;", ` = vec3(-u_xlat0.x, u_xlat0.y, u_xlat0.z);`);
+    // shader.code = shader.code!.replace("* u_xlat1.xyz;", ` * vec3(-u_xlat1.x, u_xlat1.y, u_xlat1.z);`);
+    // potentially useful for later
+    // shader.code = shader.code!.replace("return;", `return;`);
+}
+*/
+function b64DecodeUnicode(str) {
+    return decodeURIComponent(Array.prototype.map.call(atob(str), function (c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+    }).join(''));
+}
+//# sourceMappingURL=engine_shaders.js.map

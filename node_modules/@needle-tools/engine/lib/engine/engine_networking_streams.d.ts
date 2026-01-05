@@ -1,0 +1,123 @@
+import Peer, { MediaConnection } from "peerjs";
+import { EventDispatcher } from "three";
+import { Context } from "./engine_context.js";
+import { type IComponent } from "./engine_types.js";
+export declare enum NetworkedStreamEvents {
+    Connected = "peer-user-connected",
+    StreamReceived = "receive-stream",
+    StreamEnded = "call-ended",
+    Disconnected = "peer-user-disconnected",
+    UserJoined = "user-joined"
+}
+export declare class StreamEndedEvent {
+    readonly type = NetworkedStreamEvents.StreamEnded;
+    readonly userId: string;
+    readonly direction: CallDirection;
+    constructor(userId: string, direction: CallDirection);
+}
+export declare class StreamReceivedEvent {
+    readonly type = NetworkedStreamEvents.StreamReceived;
+    readonly userId: string;
+    readonly stream: MediaStream;
+    readonly target: CallHandle;
+    constructor(userId: string, stream: MediaStream, target: CallHandle);
+}
+export declare enum CallDirection {
+    Incoming = "incoming",
+    Outgoing = "outgoing"
+}
+declare class CallHandle extends EventDispatcher<any> {
+    readonly peerId: string;
+    readonly userId: string;
+    readonly direction: CallDirection;
+    readonly call: MediaConnection;
+    get stream(): MediaStream | null;
+    private _stream;
+    private _isDisposed;
+    close(): void;
+    get isOpen(): boolean;
+    get isOpening(): boolean;
+    get isClosed(): boolean;
+    constructor(userId: string, call: MediaConnection, direction: CallDirection, stream?: MediaStream | null);
+}
+export declare class PeerHandle extends EventDispatcher<any> {
+    private static readonly instances;
+    static getOrCreate(context: Context, guid: string): PeerHandle;
+    getMyPeerId(): string | undefined;
+    getPeerIdFromUserId(userConnectionId: string): string;
+    getUserIdFromPeerId(peerId: string): string;
+    makeCall(peerId: string, stream: MediaStream): CallHandle | undefined;
+    closeAll(): void;
+    updateCalls: () => void;
+    get peer(): Peer | undefined;
+    get incomingCalls(): CallHandle[];
+    readonly id: string;
+    readonly context: Context;
+    private readonly _incomingCalls;
+    private readonly _outgoingCalls;
+    private _peer;
+    private constructor();
+    private _enabled;
+    private _enabledPeer;
+    private onConnectRoomFn;
+    enable(): void;
+    disable(): void;
+    private onConnectRoom;
+    private setupPeer;
+    private subscribePeerEvents;
+    private unsubscribePeerEvents;
+    /**
+     * Emitted when a connection to the PeerServer is established. You may use the peer before this is emitted, but messages to the server will be queued. id is the brokering ID of the peer (which was either provided in the constructor or assigned by the server).
+     * @param id ID of the peer
+    */
+    private onPeerConnect;
+    /** Emitted when the peer is destroyed and can no longer accept or create any new connections. At this time, the peer's connections will all be closed. */
+    private onPeerClose;
+    /** Emitted when the peer is disconnected from the signalling server, either manually or because the connection to the signalling server was lost. */
+    private onPeerDisconnected;
+    /**
+     * Errors on the peer are almost always fatal and will destroy the peer. Errors from the underlying socket and PeerConnections are forwarded here.
+     */
+    private onPeerError;
+    private onPeerReceivingCall;
+    private registerCall;
+}
+/**
+ * This class is responsible for managing the sending and receiving of streams between peers.
+ */
+export declare class NetworkedStreams extends EventDispatcher<any> {
+    /**
+     * Create a new NetworkedStreams instance
+     */
+    static create(comp: IComponent, guid?: string): NetworkedStreams;
+    private readonly context;
+    private readonly peer;
+    private _sendingStreams;
+    /**
+     * If true, will log debug information
+     */
+    debug: boolean;
+    constructor(context: IComponent);
+    constructor(context: Context, guid: string);
+    constructor(context: Context, peer: PeerHandle);
+    startSendingStream(stream: MediaStream): void;
+    stopSendingStream(_steam: MediaStream | undefined | null): void;
+    private _enabled;
+    get enabled(): boolean;
+    enable(): void;
+    disable(): void;
+    private _tickIntervalId?;
+    private tick;
+    private onJoinedRoom;
+    /** This is when the local user leaves the room */
+    private onLeftRoom;
+    private onCallStreamReceived;
+    private onCallEnded;
+    private onUserConnected;
+    private onUserLeft;
+    private updateSendingCalls;
+    private stopCallsToUsersThatAreNotInTheRoomAnymore;
+    private debugLogCurrentState;
+}
+export declare function disposeStream(str: MediaStream | null | undefined): void;
+export {};

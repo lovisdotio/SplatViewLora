@@ -1,0 +1,8 @@
+export var SendQueue;
+(function (SendQueue) {
+    SendQueue[SendQueue["OnConnection"] = 0] = "OnConnection";
+    SendQueue[SendQueue["OnRoomJoin"] = 1] = "OnRoomJoin";
+    SendQueue[SendQueue["Queued"] = 2] = "Queued";
+    SendQueue[SendQueue["Immediate"] = 3] = "Immediate";
+})(SendQueue || (SendQueue = {}));
+//# sourceMappingURL=engine_networking_types.js.map

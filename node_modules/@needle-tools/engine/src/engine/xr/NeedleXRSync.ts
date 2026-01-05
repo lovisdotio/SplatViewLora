@@ -1,0 +1,221 @@
+import type { Context } from "../engine_context.js";
+import { RoomEvents, UserJoinedOrLeftRoomModel } from "../engine_networking.js";
+import { getParam } from "../engine_utils.js";
+import { NeedleXRController } from "./NeedleXRController.js";
+import { NeedleXRSession } from "./NeedleXRSession.js";
+
+const debug = getParam("debugwebxr");
+
+
+declare type XRControllerType = "hand" | "controller";
+
+declare type XRControllerState = {
+    // adding a guid so it's saved on the server, ideally we have a "room lifetime" store that doesnt save state forever on disc but just until the room is disposed (we have to add support for this in the networking backend tho)
+    guid: string;
+    index: number;
+    handedness: XRHandedness;
+    isTracking: boolean;
+    type: XRControllerType;
+}
+
+class XRUserState {
+
+    readonly controllerStates: XRControllerState[] = [];
+
+    readonly userId: string;
+    readonly context: Context;
+
+    private readonly userStateEvtName: string;
+
+    constructor(userId: string, context: Context) {
+        this.userId = userId;
+        this.context = context;
+        this.userStateEvtName = "xr-sync-user-state-" + userId;
+        this.context.connection.beginListen(this.userStateEvtName, this.onReceivedControllerState);
+    }
+
+    dispose() {
+        this.context.connection.stopListen(this.userStateEvtName, this.onReceivedControllerState);
+    }
+
+    onReceivedControllerState = (state: XRControllerState) => {
+        if (debug) console.log(`XRSync: Received change for ${this.userId}: ${state.type} ${state.handedness}; tracked=${state.isTracking}`);
+
+        let found = false;
+        for (let i = 0; i < this.controllerStates.length; i++) {
+            const ctrl = this.controllerStates[i];
+            if (ctrl.index === state.index) {
+                this.controllerStates[i] = state;
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            this.controllerStates.push(state);
+        }
+    }
+
+    update(session: NeedleXRSession) {
+        if (this.context.connection.isConnected == false) return;
+
+        for (let i = this.controllerStates.length - 1; i >= 0; i--) {
+            const state = this.controllerStates[i];
+            let foundController = false;
+            for (let i = 0; i < session.controllers.length; i++) {
+                const ctrl = session.controllers[i];
+                if (ctrl.index === state.index) {
+                    foundController = true;
+                }
+            }
+            if (!foundController) {
+                // controller was removed
+                if (debug) console.log(`XRSync: ${state.type} ${state.handedness} removed`, state.index);
+                this.controllerStates.splice(i, 1);
+                this.sendControllerRemoved(state);
+            }
+        }
+
+        for (const ctrl of session.controllers) {
+            this.updateControllerStates(ctrl);
+        }
+    }
+
+    onExitXR(_session: NeedleXRSession) {
+        for (const state of this.controllerStates) {
+            this.sendControllerRemoved(state);
+        }
+        this.controllerStates.length = 0;
+    }
+
+    private sendControllerRemoved(state: XRControllerState) {
+        state.isTracking = false;
+        state.guid = "";
+        this.context.connection.send(this.userStateEvtName, state);
+        this.context.connection.sendDeleteRemoteState(state.guid);
+    }
+
+    private updateControllerStates(ctrl: NeedleXRController) {
+
+        // this.context.connection.send(this.userStateEvtName, {});
+        const existing = this.controllerStates.find(x => x.index === ctrl.index);
+        if (existing) {
+            let hasChanged = false;
+            hasChanged ||= existing.isTracking != ctrl.isTracking;
+            if (hasChanged) {
+                existing.isTracking = ctrl.isTracking;
+                this.context.connection.send(this.userStateEvtName, existing);
+            }
+        }
+        else {
+            const state: XRControllerState = {
+                guid: this.userId + "-" + ctrl.index,
+                isTracking: ctrl.isTracking,
+                handedness: ctrl.side,
+                index: ctrl.index,
+                type: ctrl.hand ? "hand" : "controller"
+            }
+            this.controllerStates.push(state);
+            this.context.connection.send(this.userStateEvtName, state);
+            if (debug) console.log(`XRSync: ${state.type} ${state.handedness} added`, state.index);
+        }
+    }
+
+
+}
+
+export class NeedleXRSync {
+
+    hasState(userId: string | null | undefined) {
+        if (!userId) return false;
+        return this._states.has(userId);
+    }
+
+    /** Is the left controller or hand tracked */
+    isTracking(userId: string | null | undefined, handedness: XRHandedness): boolean | undefined {
+        if (!userId) return undefined;
+        const user = this._states.get(userId);
+        if (!user) return undefined;
+        const ctrl = user.controllerStates.find(x => x.handedness === handedness);
+        return ctrl?.isTracking || false;
+    }
+
+    /** Is it hand tracking or a controller */
+    getDeviceType(userId: string, handedness: XRHandedness): XRControllerType | undefined | "unknown" {
+        if (!userId) return undefined;
+        const user = this._states.get(userId);
+        if (!user) return undefined;
+        const ctrl = user.controllerStates.find(x => x.handedness === handedness);
+        return ctrl?.type || "unknown";
+    }
+
+    private readonly context: Context;
+
+    constructor(context: Context) {
+        this.context = context;
+        this.context.connection.beginListen(RoomEvents.JoinedRoom, this.onJoinedRoom);
+        this.context.connection.beginListen(RoomEvents.LeftRoom, this.onLeftRoom)
+        this.context.connection.beginListen(RoomEvents.UserJoinedRoom, this.onOtherUserJoinedRoom);
+        this.context.connection.beginListen(RoomEvents.UserLeftRoom, this.onOtherUserLeftRoom);
+    }
+    destroy() {
+        this.context.connection.stopListen(RoomEvents.JoinedRoom, this.onJoinedRoom);
+        this.context.connection.stopListen(RoomEvents.LeftRoom, this.onLeftRoom)
+        this.context.connection.stopListen(RoomEvents.UserJoinedRoom, this.onOtherUserJoinedRoom);
+        this.context.connection.stopListen(RoomEvents.UserLeftRoom, this.onOtherUserLeftRoom);
+    }
+
+    private onJoinedRoom = () => {
+        if (this.context.connection.connectionId) {
+            if (!this._states.has(this.context.connection.connectionId)) {
+                if (debug) console.log("XRSync: Local user joined room", this.context.connection.connectionId);
+                this._states.set(this.context.connection.connectionId, new XRUserState(this.context.connection.connectionId, this.context));
+            }
+            for (const user of this.context.connection.usersInRoom()) {
+                if (!this._states.has(user)) {
+                    this._states.set(user, new XRUserState(user, this.context));
+                }
+            }
+        }
+    }
+    private onLeftRoom = () => {
+        if (this.context.connection.connectionId) {
+            if (!this._states.has(this.context.connection.connectionId)) {
+                const state = this._states.get(this.context.connection.connectionId);
+                state?.dispose();
+                this._states.delete(this.context.connection.connectionId);
+            }
+        }
+    }
+    private onOtherUserJoinedRoom = (evt: UserJoinedOrLeftRoomModel) => {
+        const userId = evt.userId;
+        if (!this._states.has(userId)) {
+            if (debug) console.log("XRSync: Remote user joined room", userId);
+            this._states.set(userId, new XRUserState(userId, this.context));
+        }
+    }
+    private onOtherUserLeftRoom = (evt: UserJoinedOrLeftRoomModel) => {
+        const userId = evt.userId;
+        if (!this._states.has(userId)) {
+            const state = this._states.get(userId);
+            state?.dispose();
+            this._states.delete(userId);
+        }
+    }
+
+    private _states: Map<string, XRUserState> = new Map();
+
+    onUpdate(session: NeedleXRSession) {
+        if (this.context.connection.isConnected && this.context.connection.connectionId) {
+            const localState = this._states.get(this.context.connection.connectionId);
+            localState?.update(session);
+        }
+    }
+
+    onExitXR(session: NeedleXRSession) {
+        if (this.context.connection.isConnected && this.context.connection.connectionId) {
+            const localState = this._states.get(this.context.connection.connectionId);
+            localState?.onExitXR(session);
+        }
+    }
+
+}

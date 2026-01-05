@@ -1,0 +1,2 @@
+import { SphereCollider } from "./Collider.js";
+export default SphereCollider;

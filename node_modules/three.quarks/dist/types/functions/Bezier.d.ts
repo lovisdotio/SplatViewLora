@@ -1,0 +1,27 @@
+export declare class Bezier {
+    p: number[];
+    constructor(p1: number, p2: number, p3: number, p4: number);
+    genValue(t: number): number;
+    derivativeCoefficients(points: number[]): number[][];
+    getSlope(t: number): number;
+    controlCurve(d0: number, d1: number): void;
+    hull(t: number): number[];
+    split(t: number): {
+        left: Bezier;
+        right: Bezier;
+        span: number[];
+    };
+    clone(): Bezier;
+    toJSON(): {
+        p0: number;
+        p1: number;
+        p2: number;
+        p3: number;
+    };
+    static fromJSON(json: {
+        p0: number;
+        p1: number;
+        p2: number;
+        p3: number;
+    }): Bezier;
+}

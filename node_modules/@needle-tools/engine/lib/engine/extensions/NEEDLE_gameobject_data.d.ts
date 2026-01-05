@@ -1,0 +1,10 @@
+import { type GLTF, type GLTFLoaderPlugin, GLTFParser } from "three/examples/jsm/loaders/GLTFLoader.js";
+export declare const EXTENSION_NAME = "NEEDLE_gameobject_data";
+export declare class NEEDLE_gameobject_data implements GLTFLoaderPlugin {
+    get name(): string;
+    private parser;
+    constructor(parser: GLTFParser);
+    afterRoot(_result: GLTF): Promise<any> | null;
+    private findAndApplyExtensionData;
+    private applyExtensionData;
+}

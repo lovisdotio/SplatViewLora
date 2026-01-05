@@ -1,0 +1,7 @@
+import { Object3D } from "three";
+import type { AnimationExtension } from "../extensions/Animation.js";
+import type { AudioExtension } from "../extensions/behavior/AudioExtension.js";
+import { BehaviorModel } from "../extensions/behavior/BehavioursBuilder.js";
+export declare function registerAnimatorsImplictly(root: Object3D, ext: AnimationExtension): Array<Object3D>;
+export declare function registerAudioSourcesImplictly(root: Object3D, _ext: AudioExtension): Array<Object3D>;
+export declare function disableObjectsAtStart(objects: Array<Object3D>): BehaviorModel;

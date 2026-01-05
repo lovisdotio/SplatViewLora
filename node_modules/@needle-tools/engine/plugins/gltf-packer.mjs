@@ -1,0 +1,1 @@
+console.error('ERR: this is an old version of the gltf packer, please update gltf-pack in your package.json. The pack-gltf script should now look something like this: "npm run pack-gltf --prefix node_modules/@needle-tools/engine" \nSee the ExportInfo component for more info.');

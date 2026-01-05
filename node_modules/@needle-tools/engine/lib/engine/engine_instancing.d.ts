@@ -1,0 +1,19 @@
+import { InstancedMesh, Object3D } from "three";
+export declare const NEED_UPDATE_INSTANCE_KEY: unique symbol;
+export declare const $isUsingInstancing: unique symbol;
+export declare const $instancingRenderer: unique symbol;
+export declare const $instancingAutoUpdateBounds: unique symbol;
+/**
+ * Utility class for accessing instancing related properties
+ */
+export declare class InstancingUtil {
+    /** Is this object rendered using a InstancedMesh */
+    static isUsingInstancing(instance: Object3D): boolean;
+    /** Returns the instanced mesh IF the object is rendered by an instanced mesh
+     * @link https://threejs.org/docs/#api/en/objects/InstancedMesh
+     */
+    static getRenderer(instance: Object3D): InstancedMesh | null;
+    setAutoUpdateBounds(instance: Object3D, value: boolean): void;
+    /** Mark an instanced object dirty so the instance matrix will be updated */
+    static markDirty(go: Object3D | null, recursive?: boolean): void;
+}

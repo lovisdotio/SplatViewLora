@@ -1,0 +1,12 @@
+@echo off
+
+md dist
+
+@REM set ALL=
+for /r %%i in (*.ts) do (
+    @REM call set ALL=%%ALL%%%%i 
+    @REM set ALL_TS_FILES = "%ALL_TS_FILES: %i"
+    tsc %%i --outDir dist
+)
+@REM echo %ALL%
+@REM tsc %ALL% --target esnext --moduleResolution node --module amd --outfile schemes.js

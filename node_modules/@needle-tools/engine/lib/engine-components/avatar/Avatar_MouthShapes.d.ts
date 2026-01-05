@@ -1,0 +1,15 @@
+import { Object3D } from "three";
+import { Behaviour } from "../Component.js";
+/** @internal */
+export declare class Avatar_MouthShapes extends Behaviour {
+    idle: Object3D[];
+    talking: Object3D[];
+    private marker;
+    private voip;
+    private lastMouthChangeTime;
+    private mouthChangeLength;
+    awake(): void;
+    update(): void;
+    private updateLips;
+    private setMouthShapeActive;
+}

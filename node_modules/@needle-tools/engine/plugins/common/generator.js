@@ -1,0 +1,11 @@
+import { getMeta } from "./config.js";
+
+
+/** @returns {string|null} */
+export function tryGetGenerator() {
+    const meta = getMeta();
+    if (meta) {
+        return meta.generator;
+    }
+    return null;
+}

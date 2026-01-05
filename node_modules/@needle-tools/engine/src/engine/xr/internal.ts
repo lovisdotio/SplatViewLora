@@ -1,0 +1,35 @@
+import { Matrix4, Object3D, Quaternion, Scene, Vector3 } from 'three';
+
+import { CreateWireCube, Gizmos } from '../engine_gizmos.js';
+import type { IGameObject } from '../engine_types.js';
+import { getParam } from '../engine_utils.js';
+import type { IXRRig } from './XRRig.js';
+
+export const flipForwardMatrix = new Matrix4().makeRotationY(Math.PI);
+export const flipForwardQuaternion = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI);
+
+const debug = getParam("debugwebxr");
+
+export class ImplictXRRig implements IXRRig {
+
+    priority = -100000;
+    gameObject: IGameObject;
+
+    isXRRig(): boolean {
+        return true;
+    }
+
+    get isActive(): boolean {
+        return this.gameObject.visible;
+    }
+
+    constructor() {
+        this.gameObject = new Object3D() as IGameObject;
+        this.gameObject.name = "Implicit XR Rig";
+        if (debug) {
+            const cube = CreateWireCube(0xff55dd);
+            cube.position.y += .5;
+            this.gameObject.add(cube);
+        }
+    }
+}

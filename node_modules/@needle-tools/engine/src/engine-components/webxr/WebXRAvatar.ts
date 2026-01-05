@@ -1,0 +1,66 @@
+import { Object3D } from "three";
+
+import { getParam } from "../../engine/engine_utils.js";
+import { Behaviour, GameObject } from "../Component.js";
+import { XRFlag } from "./XRFlag.js";
+
+export const debug = getParam("debugavatar");
+
+export type AvatarMarkerEventArgs = {
+    avatarMarker: AvatarMarker;
+    gameObject: Object3D;
+}
+
+/** 
+ * This is used to mark an object being controlled / owned by a player   
+ * This system might be refactored and moved to a more centralized place in a future version
+ */
+// We might be updating this system in the future to a centralized API (PlayerView)  
+// but since currently quite a few core components rely on it, we're keeping it for now
+export class AvatarMarker extends Behaviour {
+
+    public static getAvatar(index: number): AvatarMarker | null {
+        if (index >= 0 && index < AvatarMarker.instances.length)
+            return AvatarMarker.instances[index];
+        return null;
+    }
+
+    public static instances: AvatarMarker[] = [];
+
+    public static onAvatarMarkerCreated(cb: (args: AvatarMarkerEventArgs) => void): Function {
+        AvatarMarker._onNewAvatarMarkerAdded.push(cb);
+        return cb;
+    }
+
+    public static onAvatarMarkerDestroyed(cb: (args: AvatarMarkerEventArgs) => void): Function {
+        AvatarMarker._onAvatarMarkerDestroyed.push(cb);
+        return cb;
+    }
+
+    private static _onNewAvatarMarkerAdded: Array<(args: AvatarMarkerEventArgs) => void> = [];
+    private static _onAvatarMarkerDestroyed: Array<(args: AvatarMarkerEventArgs) => void> = [];
+
+
+    public connectionId!: string;
+    public avatar?: Object3D & { flags?: XRFlag[] }
+
+    awake() {
+        AvatarMarker.instances.push(this);
+        if (debug)
+            console.log(this);
+
+        for (const cb of AvatarMarker._onNewAvatarMarkerAdded)
+            cb({ avatarMarker: this, gameObject: this.gameObject });
+    }
+
+    onDestroy() {
+        AvatarMarker.instances.splice(AvatarMarker.instances.indexOf(this), 1);
+
+        for (const cb of AvatarMarker._onAvatarMarkerDestroyed)
+            cb({ avatarMarker: this, gameObject: this.gameObject });
+    }
+
+    isLocalAvatar() {
+        return this.connectionId === this.context.connection.connectionId;
+    }
+}

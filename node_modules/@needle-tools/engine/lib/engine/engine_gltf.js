@@ -1,0 +1,16 @@
+let gltfLoader;
+let gltfLoaderType = null;
+export function getLoader() {
+    return gltfLoader;
+}
+export function registerLoader(loader) {
+    if (loader === null || loader === undefined) {
+        console.warn("Oh no: someone tried registering a non-existend gltf-loader. When you see this log it might mean that needle-engine is being imported multiple times. Please check your project setup.");
+        return;
+    }
+    if (gltfLoaderType !== loader) {
+        gltfLoaderType = loader;
+        gltfLoader = new loader();
+    }
+}
+//# sourceMappingURL=engine_gltf.js.map

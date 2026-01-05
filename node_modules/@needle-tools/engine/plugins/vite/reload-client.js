@@ -1,0 +1,16 @@
+import { showBalloonMessage } from "@needle-tools/engine";
+
+try {
+    // communicate via vite
+    if (import.meta.hot) {
+        // listen to needle-reload event
+        import.meta.hot.on('needle:reload', (evt) => {
+            console.log("Received reload event");
+            showBalloonMessage("Detected files changing\npage will reload in a moment");
+        });
+
+    }
+}
+catch {
+    // ignore
+}

@@ -1,0 +1,11 @@
+import { Object3D } from "three";
+import { type ICanvasGroup, type IGraphic } from "./Interfaces.js";
+export declare class UIRaycastUtils {
+    /** returns the real object when dealing with shadow UI */
+    static getObject(obj: Object3D): Object3D;
+    static isInteractable(obj: Object3D, out?: {
+        canvasGroup?: ICanvasGroup;
+        graphic?: IGraphic;
+    }): boolean;
+    private static tryFindCanvasGroup;
+}

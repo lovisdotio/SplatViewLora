@@ -1,0 +1,5 @@
+/** @internal */
+export function getEditorModificationCache() {
+    return globalThis["NeedleEditorSync.ModificationCache"];
+}
+//# sourceMappingURL=engine_editor-sync.js.map

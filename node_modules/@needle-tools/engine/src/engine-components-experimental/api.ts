@@ -1,0 +1,5 @@
+/**
+ * @module Experimental Components
+ */
+
+export * from "./networking/PlayerSync.js";

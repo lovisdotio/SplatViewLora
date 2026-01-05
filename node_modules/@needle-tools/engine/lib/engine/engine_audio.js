@@ -1,0 +1,24 @@
+import { AudioContext } from "three";
+import { Application } from "./engine_application.js";
+/**
+ * @internal
+ * Ensure the audio context is resumed if it gets suspended or interrupted */
+export function ensureAudioContextIsResumed() {
+    Application.registerWaitForInteraction(() => {
+        // this is a fix for https://github.com/mrdoob/three.js/issues/27779 & https://linear.app/needle/issue/NE-4257
+        const ctx = AudioContext.getContext();
+        ctx.addEventListener("statechange", () => {
+            setTimeout(() => {
+                // on iOS the audiocontext can be interrupted: https://developer.mozilla.org/en-US/docs/Web/API/BaseAudioContext/state#resuming_interrupted_play_states_in_ios_safari
+                const state = ctx.state;
+                if (state === "suspended" || state === "interrupted") {
+                    ctx.resume()
+                        .then(() => { console.log("AudioContext resumed successfully"); })
+                        .catch((e) => { console.log("Failed to resume AudioContext: " + e); });
+                }
+            }, 500);
+        });
+    });
+}
+setTimeout(ensureAudioContextIsResumed, 1000);
+//# sourceMappingURL=engine_audio.js.map

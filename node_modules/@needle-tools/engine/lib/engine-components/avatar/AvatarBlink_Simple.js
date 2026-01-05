@@ -1,0 +1,77 @@
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+import { Object3D } from "three";
+import { serializable } from "../../engine/engine_serialization_decorator.js";
+import { Behaviour, GameObject } from "../Component.js";
+import { XRFlag } from "../webxr/XRFlag.js";
+/** @internal */
+export class AvatarBlink_Simple extends Behaviour {
+    eyes = [];
+    lastBlinkTime = 0;
+    blinkLength = 0;
+    eyesOpen = true;
+    state = null;
+    awake() {
+        this.state = GameObject.getComponentInParent(this.gameObject, XRFlag);
+        // console.log(this.state, this.activeAndEnabled, this.gameObject);
+    }
+    update() {
+        if (!this.gameObject || !this.gameObject.visible)
+            return;
+        if (!this.eyes || !Array.isArray(this.eyes) || this.eyes.length === 0)
+            return;
+        const needsUpdate = this.context.time.time - this.lastBlinkTime > this.blinkLength;
+        if (needsUpdate) {
+            this.lastBlinkTime = this.context.time.time;
+            // workaround until we propagate active state to all child components
+            if (this.state && !this.state.isOn)
+                return;
+            if (!this.activeAndEnabled)
+                return;
+            // console.log(this.state?.isOn, this.activeAndEnabled);
+            this.eyesOpen = !this.eyesOpen;
+            this.blinkLength = Math.random();
+            if (!this.eyesOpen) {
+                this.blinkLength *= Math.random() * .2;
+                this.blinkLength += .1;
+            }
+            else {
+                // eyes are open
+                this.blinkLength *= 3;
+                this.blinkLength += .5;
+                if (Math.random() < .1)
+                    this.blinkLength = .1 + Math.random() * .2;
+            }
+            if (Math.random() < .1)
+                this.blinkLength *= 3;
+            // if(time.time - this.lastMouthChangeTime < .5 && Math.random() > .5){
+            //     this.blinkLength *= 1-(100/this.lastMouthChangeFrequency);
+            // }
+            this.blinkLength = Math.max(.2, this.blinkLength);
+            this.blinkLength = Math.min(3, this.blinkLength);
+            if (this.eyes) {
+                for (const eye of this.eyes) {
+                    if (eye)
+                        eye.visible = this.eyesOpen;
+                }
+            }
+        }
+    }
+}
+__decorate([
+    serializable(Object3D)
+], AvatarBlink_Simple.prototype, "eyes", void 0);
+__decorate([
+    serializable()
+], AvatarBlink_Simple.prototype, "lastBlinkTime", void 0);
+__decorate([
+    serializable()
+], AvatarBlink_Simple.prototype, "blinkLength", void 0);
+__decorate([
+    serializable()
+], AvatarBlink_Simple.prototype, "eyesOpen", void 0);
+//# sourceMappingURL=AvatarBlink_Simple.js.map

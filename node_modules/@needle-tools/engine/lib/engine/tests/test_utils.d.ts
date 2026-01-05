@@ -1,0 +1,2 @@
+export declare function detect_run_tests(): void;
+export declare function spawnWindows(count: number): Window[] | null;

@@ -1,0 +1,54 @@
+import { Material, Object3D } from "three";
+import type { IUSDExporterExtension } from "../Extension.js";
+import type { IBehaviorElement } from "../extensions/behavior/BehavioursBuilder.js";
+import { USDDocument, USDObject, USDWriter, USDZExporterContext } from "../ThreeUSDZExporter.js";
+export declare enum TextWrapMode {
+    singleLine = "singleLine",
+    hardBreaks = "hardBreaks",
+    flowing = "flowing"
+}
+export declare enum HorizontalAlignment {
+    left = "left",
+    center = "center",
+    right = "right",
+    justified = "justified"
+}
+export declare enum VerticalAlignment {
+    top = "top",
+    middle = "middle",
+    lowerMiddle = "lowerMiddle",
+    baseline = "baseline",
+    bottom = "bottom"
+}
+export declare class USDZText implements IBehaviorElement {
+    static global_id: number;
+    static getId(): number;
+    id: string;
+    content: string;
+    font?: string[];
+    pointSize: number;
+    width?: number;
+    height?: number;
+    depth?: number;
+    wrapMode?: TextWrapMode;
+    horizontalAlignment?: HorizontalAlignment;
+    verticalAlignment?: VerticalAlignment;
+    material?: Material;
+    setDepth(depth: number): USDZText;
+    setPointSize(pointSize: number): USDZText;
+    setHorizontalAlignment(align: HorizontalAlignment): this;
+    setVerticalAlignment(align: VerticalAlignment): this;
+    constructor(id: string);
+    writeTo(_document: USDDocument | undefined, writer: USDWriter): void;
+}
+export declare class TextBuilder {
+    static singleLine(str: string, pointSize?: number, depth?: number): USDZText;
+    static multiLine(str: string, width: number, height: number, horizontal: HorizontalAlignment, vertical: VerticalAlignment, wrapMode?: TextWrapMode): USDZText;
+}
+export declare class TextExtension implements IUSDExporterExtension {
+    get extensionName(): string;
+    exportText(object: Object3D, newModel: USDObject, _context: USDZExporterContext): void;
+    private convertToTextSize;
+    private setOverflow;
+    private setTextAlignment;
+}

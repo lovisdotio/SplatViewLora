@@ -1,0 +1,11 @@
+import { type GLTF, type GLTFLoaderPlugin, GLTFParser } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { type IExtensionReferenceResolver } from "./extension_resolver.js";
+export declare const EXTENSION_NAME = "NEEDLE_persistent_assets";
+export declare function isPersistentAsset(asset: any): boolean;
+export declare class NEEDLE_persistent_assets implements GLTFLoaderPlugin, IExtensionReferenceResolver {
+    get name(): string;
+    private parser;
+    constructor(parser: GLTFParser);
+    afterRoot(_result: GLTF): Promise<void>;
+    resolve(parser: GLTFParser, path: string): Promise<void> | null | any;
+}

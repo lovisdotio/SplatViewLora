@@ -1,0 +1,84 @@
+import { Object3D } from "three";
+
+import { serializable } from "../../engine/engine_serialization_decorator.js";
+import * as utils from "../../engine/engine_utils.js";
+import { Behaviour, GameObject } from "../Component.js";
+import { Voip } from "../Voip.js";
+import { AvatarMarker } from "../webxr/WebXRAvatar.js";
+
+const debug = utils.getParam("debugmouth");
+
+/** @internal */
+export class Avatar_MouthShapes extends Behaviour {
+    @serializable(Object3D)
+    public idle: Object3D[] = [];
+    @serializable(Object3D)
+    public talking: Object3D[] = [];
+
+    private marker: AvatarMarker | null = null;
+    private voip: Voip | null = null;
+    private lastMouthChangeTime = 0;
+    private mouthChangeLength = 0;
+
+    awake(): void {
+        setTimeout(()=>{
+            this.voip = GameObject.findObjectOfType(Voip, this.context);
+            if (!this.marker) this.marker = GameObject.getComponentInParent(this.gameObject, AvatarMarker);
+        }, 3000)
+    }
+
+    update(): void {
+        if (!this.voip) return;
+        if (this.context.time.frameCount % 10 !== 0) return;
+        let id = this.marker?.connectionId ?? null;
+        if (!id) {
+            if (debug) id = null;
+            return;
+        }
+        const freq = this.voip.getFrequency(id) ?? 0;
+        this.updateLips(freq);
+    }
+
+    private updateLips(frequency: number) {
+        if (this.context.time.time - this.lastMouthChangeTime > this.mouthChangeLength) {
+            this.mouthChangeLength = .05 + Math.random() * .1;
+            if (this.talking && this.talking.length > 0 && frequency > 30) {
+                this.lastMouthChangeTime = this.context.time.time;
+                const index = Math.floor(Math.random() * this.talking.length);
+                this.setMouthShapeActive(this.talking, index);
+            }
+            else if (this.idle.length > 0 && this.context.time.time - this.lastMouthChangeTime > .5) {
+                this.lastMouthChangeTime = this.context.time.time;
+                const index = Math.floor(Math.random() * this.idle.length);
+                this.setMouthShapeActive(this.idle, index);
+            }
+        }
+    }
+
+    private setMouthShapeActive(arr: Object3D[], index: number) {
+        if (!arr) return;
+
+        // hide other
+        if (arr != this.idle) this.idle.map(i => i.visible = false);
+        else this.talking.map(i => i.visible = false);
+
+        for (let i = 0; i < arr.length; i++) {
+            const shape = arr[i];
+            if (shape) {
+                shape.visible = i === index;
+            }
+        }
+    }
+
+    // private tryFindMouthShapes() {
+    //     if (this.mouthShapes) return;
+    //     this.mouthShapes = [];
+    //     this.head?.traverse(o => {
+    //         if (o && o.type === "Mesh") {
+    //             if (o.name.lastIndexOf("mouth") > 0) {
+    //                 this.mouthShapes.push(o as Mesh);
+    //             }
+    //         }
+    //     });
+    // }
+}

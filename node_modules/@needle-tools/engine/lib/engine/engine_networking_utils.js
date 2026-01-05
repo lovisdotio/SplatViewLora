@@ -1,0 +1,21 @@
+const localNetworkResults = new Map();
+export function isLocalNetwork(hostname = globalThis.location?.hostname) {
+    if (localNetworkResults.has(hostname))
+        return localNetworkResults.get(hostname);
+    const isLocalNetwork = /(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})|localhost/.test(hostname);
+    localNetworkResults.set(hostname, isLocalNetwork);
+    if (isLocalNetwork === true)
+        return true;
+    return false;
+}
+export function isHostedOnGlitch() {
+    return window.location.hostname.includes("glitch.me");
+}
+// const testUrls = [
+//     "192.254.384.122",
+//     "my-glitch-page.glitch.me",
+//     "a4d35231.my-url.dev"
+// ]
+// for (let url of testUrls)
+//     console.log("Testing url: " + url, isLocalNetwork(url));
+//# sourceMappingURL=engine_networking_utils.js.map

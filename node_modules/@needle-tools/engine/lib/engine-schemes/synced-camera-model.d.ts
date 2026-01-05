@@ -1,0 +1,25 @@
+import * as flatbuffers from 'flatbuffers';
+import { Vec3 } from './vec3.js';
+export declare class SyncedCameraModel {
+    bb: flatbuffers.ByteBuffer | null;
+    bb_pos: number;
+    __init(i: number, bb: flatbuffers.ByteBuffer): SyncedCameraModel;
+    static getRootAsSyncedCameraModel(bb: flatbuffers.ByteBuffer, obj?: SyncedCameraModel): SyncedCameraModel;
+    static getSizePrefixedRootAsSyncedCameraModel(bb: flatbuffers.ByteBuffer, obj?: SyncedCameraModel): SyncedCameraModel;
+    userId(): string | null;
+    userId(optionalEncoding: flatbuffers.Encoding): string | Uint8Array | null;
+    guid(): string | null;
+    guid(optionalEncoding: flatbuffers.Encoding): string | Uint8Array | null;
+    dontSave(): boolean;
+    pos(obj?: Vec3): Vec3 | null;
+    rot(obj?: Vec3): Vec3 | null;
+    static startSyncedCameraModel(builder: flatbuffers.Builder): void;
+    static addUserId(builder: flatbuffers.Builder, userIdOffset: flatbuffers.Offset): void;
+    static addGuid(builder: flatbuffers.Builder, guidOffset: flatbuffers.Offset): void;
+    static addDontSave(builder: flatbuffers.Builder, dontSave: boolean): void;
+    static addPos(builder: flatbuffers.Builder, posOffset: flatbuffers.Offset): void;
+    static addRot(builder: flatbuffers.Builder, rotOffset: flatbuffers.Offset): void;
+    static endSyncedCameraModel(builder: flatbuffers.Builder): flatbuffers.Offset;
+    static finishSyncedCameraModelBuffer(builder: flatbuffers.Builder, offset: flatbuffers.Offset): void;
+    static finishSizePrefixedSyncedCameraModelBuffer(builder: flatbuffers.Builder, offset: flatbuffers.Offset): void;
+}

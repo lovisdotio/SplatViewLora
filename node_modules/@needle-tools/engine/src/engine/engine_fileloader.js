@@ -1,0 +1,10 @@
+import { FileLoader } from "three";
+
+const loader = new FileLoader();
+
+/** @internal */
+export async function loadFileAsync(url) {
+  return new Promise((resolve, reject) => {
+    loader.load(url, resolve, undefined, reject);
+  });
+}

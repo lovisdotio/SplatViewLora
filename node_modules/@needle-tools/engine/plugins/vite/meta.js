@@ -1,0 +1,164 @@
+import fs from 'fs';
+
+import { tryGetNeedleEngineVersion } from '../common/version.js';
+import { loadConfig } from './config.js';
+import { getPosterPath } from './poster.js';
+
+/**
+ * @param {string} command
+ * @param {import('../types').needleMeta | null} config
+ * @param {import('../types').userSettings} userSettings
+ */
+export const needleMeta = (command, config, userSettings) => {
+
+    // we can check if this is a build
+    const isBuild = command === 'build';
+
+    async function updateConfig() {
+        config = await loadConfig();
+    }
+
+    if (!userSettings) userSettings = {};
+
+    return {
+        // replace meta tags
+        name: 'needle:meta',
+        transformIndexHtml: {
+            order: 'pre',
+            handler(html, _ctx) {
+
+                if (userSettings.allowMetaPlugin === false) return [];
+
+                // this is useful to get the latest config exported from editor
+                // whenever vite wants to transform the html
+                updateConfig();
+
+                if (!config?.license)
+                    html = insertNeedleCredits(html);
+
+                // early out of the config is invalid / doesn't contain meta information
+                // TODO might be better to handle these edge cases / special cases right from Unity/Blender and not here
+                if (!config) return [];
+
+                let meta = config.meta;
+
+                if (!meta) {
+                    meta = {};
+                    meta.title = config.sceneName;
+                }
+
+                if (!meta.image?.length) {
+                    const path = getPosterPath();
+                    if (fs.existsSync('./' + path))
+                        meta.image = path;
+                }
+
+                /** @type {Array<{ tag: string, attrs: Record<string, string> }>} */
+                const tags = [];
+
+                // tags.push({"tag": "meta", attrs: { name: "viewport", content: "width=device-width, initial-scale=1" }});
+
+                let img = meta.image;
+                if (img?.length) {
+                    // for a regular build the absolutePath is url (since we dont know the deployment target)
+                    if (config.absolutePath?.length) {
+                        const baseUrl = config.absolutePath;
+                        let url = baseUrl + "/" + img;
+                        url = removeDuplicateSlashesInUrl(url);
+                        // url = appendVersion(url);
+                        tags.push({ tag: 'meta', attrs: { name: 'twitter:card', content: 'summary_large_image' } });
+                        tags.push({ tag: 'meta', attrs: { name: 'twitter:image', content: url } });
+                        tags.push({ tag: 'meta', attrs: { name: 'og:image', content: url } });
+                        // Keep in sync with poster
+                        tags.push({ tag: 'meta', attrs: { name: 'og:image:width', content: 1080 } });
+                        tags.push({ tag: 'meta', attrs: { name: 'og:image:height', content: 1080 } });
+                    }
+                    else if (isBuild) {
+                        console.warn(`Needle: meta.image is set but absolutePath is ${config.absolutePath} in userSettings. Skipping meta.image.`);
+                    }
+                }
+
+                if (config.absolutePath?.length) {
+                    html = updateUrlMetaTag(html, config.absolutePath);
+                }
+
+                if (meta.title?.length) {
+                    tags.push({ tag: 'meta', attrs: { name: 'og:title', content: meta.title } });
+
+                    html = html.replace(
+                        /<title>(.*?)<\/title>/,
+                        `<title>${meta.title}</title>`,
+                    );
+
+                    if (userSettings.allowRemoveMetaTags !== false)
+                        html = removeMetaTag(html, 'og:title');
+
+                }
+
+                if (meta.description?.length) {
+                    tags.push({ tag: 'meta', attrs: { name: 'description', content: meta.description } });
+                    tags.push({ tag: 'meta', attrs: { name: 'og:description', content: meta.description } });
+
+                    if (userSettings.allowRemoveMetaTags !== false) {
+                        html = removeMetaTag(html, 'description');
+                        html = removeMetaTag(html, 'og:description');
+                    }
+                }
+
+                let generator = "Needle";
+                if (config.generator?.length > 5) {
+                    generator = config.generator;
+                }
+                tags.push({ tag: 'meta', attrs: { name: 'generator', content: generator } });
+
+                const needleEngineVersion = tryGetNeedleEngineVersion();
+                if (needleEngineVersion) {
+                    if (command === "build")
+                        console.log("Needle Engine version: " + needleEngineVersion);
+                    tags.push({ tag: 'meta', attrs: { name: 'needle-engine', content: needleEngineVersion } });
+                }
+                else console.log("WARN: could not find needle engine package.json")
+
+                tags.push({ tag: 'meta', attrs: { name: 'needle:buildtime', content: new Date().toISOString() } });
+
+                return { html, tags }
+            },
+        }
+    }
+}
+
+
+function updateUrlMetaTag(html, url) {
+    const result = `<meta name="url" content="${url}">`;
+    html = html.replace(`<meta name="url" content="https://needle.tools">`, result);
+    html = html.replace(`<meta name="url" content="http://needle.tools">`, result);
+    return html;
+}
+
+function appendVersion(str) {
+    return str + "?v=" + Date.now();
+}
+
+function removeDuplicateSlashesInUrl(url) {
+    return url.replace(/([^:]\/)\/+/g, "$1");
+}
+
+function removeMetaTag(html, name) {
+    // TODO: maybe we could also just replace the content
+    const regex = new RegExp(`<meta (name|property)="${name}".+?\/?>`, 'gs');
+    const newHtml = html.replace(
+        regex,
+        '',
+    );
+    // console.log(newHtml);
+    return newHtml;
+}
+
+function insertNeedleCredits(html) {
+    const needleCredits = `<!-- 🌵 Made with Needle — https://needle.tools -->`;
+    html = html.replace(
+        /<head/,
+        needleCredits + "\n<head",
+    );
+    return html;
+}

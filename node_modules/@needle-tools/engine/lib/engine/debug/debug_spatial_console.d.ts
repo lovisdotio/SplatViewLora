@@ -1,0 +1,2 @@
+/** Enable a spatial debug console that follows the camera */
+export declare function enableSpatialConsole(active: boolean): void;

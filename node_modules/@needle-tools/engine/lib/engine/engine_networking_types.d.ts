@@ -1,0 +1,22 @@
+export declare interface IModel {
+    guid: string;
+    /**
+     * If set to true the model will not be saved in the server room state
+     */
+    dontSave?: boolean;
+    /**
+     * If set to true the model will be deleted when the user disconnects
+     */
+    deleteOnDisconnect?: boolean;
+}
+export declare enum SendQueue {
+    OnConnection = 0,
+    OnRoomJoin = 1,
+    Queued = 2,
+    Immediate = 3
+}
+export declare interface INetworkConnection {
+    get isConnected(): boolean;
+    get isInRoom(): boolean;
+    send(key: string, data: IModel | object | boolean | null | string | number, queue: SendQueue): unknown;
+}

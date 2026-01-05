@@ -1,0 +1,38 @@
+import { Camera, Material, RawShaderMaterial } from 'three';
+import { type GLTFLoaderPlugin, GLTFParser } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { type SourceIdentifier } from "../engine_types.js";
+export declare const NEEDLE_TECHNIQUES_WEBGL_NAME = "NEEDLE_techniques_webgl";
+export declare class CustomShader extends RawShaderMaterial {
+    private identifier;
+    private onBeforeRenderSceneCallback;
+    clone(): this;
+    constructor(identifier: SourceIdentifier, ...args: any[]);
+    dispose(): void;
+    private _sphericalHarmonicsName;
+    private _objToWorldName;
+    private _worldToObjectName;
+    private static viewProjection;
+    private static _viewProjectionValues;
+    private _viewProjectionName;
+    private static viewMatrix;
+    private static _viewMatrixValues;
+    private _viewMatrixName;
+    private static _worldSpaceCameraPosName;
+    private static _worldSpaceCameraPos;
+    private static _mainLightColor;
+    private static _mainLightPosition;
+    private static _lightData;
+    private _rendererData;
+    private get depthTextureUniform();
+    private get opaqueTextureUniform();
+    private onBeforeRenderScene;
+    onBeforeRender(_renderer: any, _scene: any, camera: any, _geometry: any, obj: any, _group: any): void;
+    onUpdateUniforms(camera?: Camera, obj?: any): void;
+}
+export declare class NEEDLE_techniques_webgl implements GLTFLoaderPlugin {
+    get name(): string;
+    private parser;
+    private identifier;
+    constructor(loader: GLTFParser, identifier: SourceIdentifier);
+    loadMaterial(index: number): Promise<Material> | null;
+}

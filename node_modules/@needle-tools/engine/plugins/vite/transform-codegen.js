@@ -1,0 +1,55 @@
+import { builtAssetsDirectory, tryLoadProjectConfig } from './config.js';
+
+/** 
+ * modify the glb load path in codegen files
+ * this is necessary if the assets directory is not the default (changed by the user in needle.config.json)
+ * @param {import('../types').userSettings} userSettings
+ */
+export const needleTransformCodegen = (command, config, userSettings) => {
+
+    if (config?.noCodegenTransform === true || userSettings?.noCodegenTransform === true) {
+        return;
+    }
+
+    let codegenDirectory = "src/generated";
+    const needleConfig = tryLoadProjectConfig();
+    if (needleConfig?.codegenDirectory?.length)
+        codegenDirectory = needleConfig.codegenDirectory;
+
+    let configuredAssetsDirectory = "assets";
+    if (needleConfig?.assetsDirectory?.length)
+        configuredAssetsDirectory = needleConfig.assetsDirectory;
+
+    // https://regex101.com/r/Y05z9P/1
+    // const matchCodegenFilePaths = /\"(.+)\/.+?\.(glb|gltf)/g;
+
+    return [
+        {
+            name: 'needle-transform-codegen-files',
+            apply: 'build',
+            transform(src, id) {
+                if (id.endsWith(codegenDirectory + "/gen.js")) {
+                    let assetsDir = builtAssetsDirectory();
+                    if (assetsDir !== configuredAssetsDirectory) {
+                        // check if the the assets directory is expected to be relative to the root
+                        // like for example "/assets"
+                        // then we want to add the leading dash also to the new path
+                        // if (configuredAssetsDirectory.startsWith("/")) assetsDir = "/" + assetsDir;
+                        // // are they now the same? if so well we dont have to do anything
+                        // if (assetsDir === configuredAssetsDirectory) {
+                        //     return;
+                        // }
+
+                        console.log(`[needle-transform-files] - Transform codegen paths \"${configuredAssetsDirectory}\" → \"${assetsDir}\"`)
+                        // replace codegen paths
+                        src = src.replaceAll(configuredAssetsDirectory, assetsDir);
+                        return {
+                            code: src,
+                            map: null
+                        }
+                    }
+                }
+            }
+        }
+    ];
+}

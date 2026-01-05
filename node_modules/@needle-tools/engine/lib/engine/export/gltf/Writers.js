@@ -1,0 +1,25 @@
+import { Gizmos } from '../../engine_gizmos.js';
+import { createFlatTexture } from '../../engine_shaders.js';
+import { RGBAColor } from '../../js-extensions/index.js';
+export class BaseWriter {
+    writer;
+    constructor(writer) {
+        this.writer = writer;
+    }
+    writeNode(_node) { }
+}
+export class GizmoWriter extends BaseWriter {
+    beforeWriteNode(node, args) {
+        if (Gizmos.isGizmo(node)) {
+            args.keep = false;
+        }
+    }
+}
+export class RenderTextureWriter extends BaseWriter {
+    beforeWriteTexture(texture, args) {
+        if (texture.isRenderTargetTexture) {
+            args.newTexture = createFlatTexture(new RGBAColor(1, 1, 1, 0));
+        }
+    }
+}
+//# sourceMappingURL=Writers.js.map

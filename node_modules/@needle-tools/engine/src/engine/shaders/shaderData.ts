@@ -1,0 +1,68 @@
+
+
+
+export class ShaderData {
+    programs: Array<ShaderProgram> = [];
+    shaders: Array<Shader> = [];
+    techniques: Array<Technique> = [];
+}
+
+export class ShaderProgram {
+    vertexShader: number | undefined;
+    fragmentShader: number | undefined;
+}
+
+export enum ShaderType {
+
+    Fragment = 35632,
+    Vertex = 35633,
+}
+
+export class Shader {
+    name: string | undefined;
+    type: ShaderType | undefined;
+    uri: string | null | undefined;
+    code: string | null | undefined;
+}
+
+export class Technique {
+    program: number | undefined;
+    attributes: Map<string, ShaderAttribute> = new Map();;
+    uniforms: Map<string, ShaderUniform> = new Map();
+}
+
+export class ShaderAttribute {
+    semantic: string | undefined;
+}
+
+export class ShaderUniform {
+    name: string = "";
+    type: UniformType | undefined;
+    semantic: string | undefined;
+    count : number = 0;
+    node : number = 0;
+}
+
+
+
+export enum UniformType {
+    INT = 5124,
+    FLOAT = 5126,
+    FLOAT_VEC2 = 35664,
+    FLOAT_VEC3 = 35665,
+    FLOAT_VEC4 = 35666,
+    INT_VEC2 = 35667,
+    INT_VEC3 = 35668,
+    INT_VEC4 = 35669,
+    BOOL = 35670, // exported as int
+    BOOL_VEC2 = 35671,
+    BOOL_VEC3 = 35672,
+    BOOL_VEC4 = 35673,
+    FLOAT_MAT2 = 35674, // exported as vec2[2]
+    FLOAT_MAT3 = 35675, // exported as vec3[3]
+    FLOAT_MAT4 = 35676, // exported as vec4[4]
+    SAMPLER_2D = 35678,
+    SAMPLER_3D = 35680, // added, not in the proposed extension
+    SAMPLER_CUBE = 35681, // added, not in the proposed extension
+    UNKNOWN = 0,
+}

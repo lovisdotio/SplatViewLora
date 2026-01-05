@@ -1,0 +1,25 @@
+import { Object3D } from "three";
+export declare class AssetDatabase {
+    constructor();
+}
+/**
+ * Disable usage tracking
+ */
+export declare function setResourceTrackingEnabled(enabled: boolean): void;
+export declare function isResourceTrackingEnabled(): boolean;
+export declare function setDisposable(obj: object | null | undefined, disposable: boolean): void;
+export declare function isDisposed(obj: object): boolean;
+/** Recursive disposes all referenced resources by this object. Does not traverse children */
+export declare function disposeObjectResources(obj: object | null | undefined): void;
+export declare function __internalNotifyObjectDestroyed(obj: Object3D): void;
+export type UserFilter = (user: object) => boolean;
+/**
+ * Find all users of an object
+ * @param object Object to find users of
+ * @param recursive Find users of users
+ * @param predicate Filter users
+ * @param set Set to add users to, a new one will be created if none is provided
+ * @returns a set of users
+ */
+export declare function findResourceUsers(object: object, recursive: boolean, predicate?: UserFilter | null | undefined, set?: Set<object>): Set<object>;
+export declare function getResourceUserCount(object: object): number | undefined;

@@ -1,0 +1,65 @@
+import { getParam } from "./engine_utils.js";
+const debug = getParam("debugplayerview");
+export var ViewDevice;
+(function (ViewDevice) {
+    ViewDevice["Browser"] = "browser";
+    ViewDevice["Headset"] = "headset";
+    ViewDevice["Handheld"] = "handheld";
+})(ViewDevice || (ViewDevice = {}));
+export class PlayerView {
+    userId;
+    context;
+    viewDevice = ViewDevice.Browser;
+    get currentObject() {
+        return this._object;
+    }
+    set currentObject(obj) {
+        this._object = obj;
+    }
+    get isConnected() {
+        return this.context.connection.userIsInRoom(this.userId);
+    }
+    removed = false;
+    _object;
+    constructor(userId, context) {
+        this.userId = userId;
+        this.context = context;
+    }
+}
+export class PlayerViewManager {
+    context;
+    playerViews = new Map();
+    constructor(context) {
+        this.context = context;
+    }
+    setPlayerView(id, obj, device) {
+        let view = this.playerViews.get(id);
+        if (!view) {
+            view = new PlayerView(id, this.context);
+            this.playerViews.set(id, view);
+        }
+        view.viewDevice = device;
+        view.currentObject = obj;
+        view.removed = false;
+    }
+    getPlayerView(id) {
+        if (!id)
+            return undefined;
+        if (!this.context.connection.userIsInRoom(id)) {
+            this.playerViews.delete(id);
+            return undefined;
+        }
+        const view = this.playerViews.get(id);
+        return view;
+    }
+    removePlayerView(id, device) {
+        const view = this.playerViews.get(id);
+        if (view?.viewDevice === device) {
+            if (debug)
+                console.log("REMOVE", id);
+            view.removed = true;
+            this.playerViews.delete(id);
+        }
+    }
+}
+//# sourceMappingURL=engine_playerview.js.map

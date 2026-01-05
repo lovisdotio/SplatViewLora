@@ -1,0 +1,200 @@
+
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/hasOwn
+
+import { getParam } from "./engine_utils.js";
+
+// const _wrappedMethods = new WeakSet();
+
+
+// export function wrap<T>(prototype: object, methodName: string, before: (t: T) => void, after: (t: T) => void) {
+
+//     const $key = Symbol(methodName + "-patched");
+
+//     const alreadyDefined = Object.getOwnPropertyDescriptor(prototype, methodName);
+//     if (alreadyDefined) {
+//         const originalRender = alreadyDefined.get;
+//         if (originalRender) {
+//             // Object.defineProperty(prototype, "render", {
+//             //     set: function (this: any, value: Function) {
+//             //         originalRender.call(this);
+//             //     },
+//             //     get: function (this: ) {
+//             //         return originalRender.call(this);
+//             //     }
+//             // });
+//         }
+//     }
+//     else {
+//         Object.defineProperty(prototype, methodName, {
+//             set: function (this: any, value: Function) {
+//                 this[$key] = value;
+//             },
+//             get: function (this: any) {
+//                 return this[$key];
+//             }
+//         });
+//     }
+// }
+
+
+// export declare type FieldPatch = (instance: object, oldValue: any, newValue: any) => any;
+
+export type Prefix = (...args) => any;
+export type Postfix = (...args) => any;
+
+const debugPatch = getParam("debugpatch");
+
+/**
+ * Use patcher for patching properties insteadof calling Object.defineProperty individually 
+ * since this will cause conflicts if multiple patches need to be applied to the same property
+ */
+export function addPatch<T extends object>(prototype: T, fieldName: string, beforeCallback?: Prefix | null, afterCallback?: Postfix | null) {
+    const debug = debugPatch === fieldName;
+
+    // If no callbacks are provided, we don't need to do anything
+    if (!beforeCallback && !afterCallback) {
+        return;
+    }
+
+    // TODO: we probably want to turn this into a symbol to prevent anyone from overriding it
+    // But when we need to store the symbol per prototype to allow e.g. material disposing to iterate those and dispose all
+    // TODO: making symbols here breaks e.g. progressive textures because they iterate on the property keys
+    const backingField = fieldName + "___needle";// Symbol(fieldName);// + " (patched)";
+
+    internalAddPatch(prototype, fieldName, beforeCallback, afterCallback);
+
+    const desc = Object.getOwnPropertyDescriptor(prototype, fieldName);
+    const existing = prototype[fieldName];
+    if (debug) console.log("Patch", prototype.constructor.name, fieldName, desc, existing);
+
+    if (desc) {
+        if (debug) console.log("Apply patch with existing descriptor", prototype.constructor.name, fieldName, desc);
+        if (typeof desc.value === "function") {
+            prototype[fieldName] = ensureFunctionWrapped(desc.value, prototype, fieldName);
+        }
+    }
+    else {
+        if (debug) console.log("Create patch with new property", prototype.constructor.name, fieldName, desc);
+        Object.defineProperty(prototype, fieldName, {
+            set: function (this: object, value: any) {
+                if (typeof value === "function") {
+                    // TODO: not sure if this is correct (if the value that is set is a function)
+                    this[backingField] = ensureFunctionWrapped(value, prototype, fieldName);
+                }
+                else {
+                    const prev = this[backingField];
+                    executePrefixes(prototype, fieldName, this, prev, value);
+                    this[backingField] = value;
+                    executePostFixes(prototype, fieldName, this, prev, value);
+                }
+            },
+            get: function (this: any) {
+                const value = this[backingField];
+                if (typeof value === "function") {
+                    if (value[backingField]) {
+                        return value[backingField];
+                    }
+                }
+                return value;
+            }
+        });
+    }
+}
+
+/** Removes prefix or postfix */
+export function removePatch(prototype: object, fieldName: string, prefixOrPostfix: Prefix | Postfix) {
+    const patches = getPatches(prototype, fieldName);
+    if (patches) {
+        for (let i = patches.length - 1; i >= 0; i--) {
+            const patch = patches[i];
+            // Remove either the prefix or postfix
+            if (patch.prefix === prefixOrPostfix) {
+                patch.prefix = null;
+            }
+            if (patch.postfix === prefixOrPostfix) {
+                patch.postfix = null;
+            }
+            // If the patch is empty, remove it from the list
+            if (!patch.prefix && !patch.postfix) {
+                patches.splice(i, 1);
+            }
+        }
+    }
+}
+
+
+
+const $wrappedFunctionSymbol = Symbol("Needle:Patches:WrappedFunction");
+
+function ensureFunctionWrapped(originalFunction: Function, prototype, fieldname) {
+    if (originalFunction[$wrappedFunctionSymbol]) {
+        return originalFunction;
+    }
+    const wrappedFunction = function (this: object, ...args: any[]) {
+        executePrefixes(prototype, fieldname, this, ...args);
+        const result = originalFunction.apply(this, args);
+        executePostFixes(prototype, fieldname, this, result, ...args);
+        return result;
+    }
+    wrappedFunction[$wrappedFunctionSymbol] = true;
+    return wrappedFunction;
+}
+
+
+export const NeedlePatchesKey = "Needle:Patches";
+
+declare type PatchInfo = {
+    prefix?: Prefix | null;
+    postfix?: Postfix | null;
+}
+function patches(): WeakMap<object, Map<string, PatchInfo[]>> {
+    if (!globalThis[NeedlePatchesKey]) {
+        globalThis[NeedlePatchesKey] = new WeakMap<object, Map<string, PatchInfo[]>>();
+    }
+    return globalThis[NeedlePatchesKey];
+}
+
+function getPatches(prototype, fieldName: string) {
+    const patchesMap = patches().get(prototype);
+    if (!patchesMap) {
+        return null;
+    }
+    return patchesMap.get(fieldName);;
+}
+
+function internalAddPatch(prototype, fieldName: string, prefix?: Prefix | null, postfix?: Postfix | null) {
+    let patchesMap = patches().get(prototype);
+    if (!patchesMap) {
+        patchesMap = new Map();
+        patches().set(prototype, patchesMap);
+    }
+    let patchList = patchesMap.get(fieldName);
+    if (!patchList) {
+        patchList = [];
+        patchesMap.set(fieldName, patchList);
+    }
+    patchList.push({
+        prefix: prefix,
+        postfix: postfix
+    });
+}
+
+function executePrefixes(prototype, fieldName: string, instance: object, ...args) {
+    if (!instance) return;
+    const patches = getPatches(prototype, fieldName);
+    if (patches) {
+        for (const patchInfo of patches) {
+            patchInfo.prefix?.call(instance, ...args);
+        }
+    }
+}
+
+function executePostFixes(prototype, fieldName: string, instance: object, result: any, ...args) {
+    if (!instance) return;
+    const patches = getPatches(prototype, fieldName);
+    if (patches) {
+        for (const patchInfo of patches) {
+            patchInfo.postfix?.call(instance, result, ...args);
+        }
+    }
+}

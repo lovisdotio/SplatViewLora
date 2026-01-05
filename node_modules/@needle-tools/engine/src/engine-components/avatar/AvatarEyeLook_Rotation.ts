@@ -1,0 +1,64 @@
+import { Object3D, Vector3 } from "three";
+
+import { serializable } from "../../engine/engine_serialization_decorator.js";
+import * as utils from "../../engine/engine_three_utils.js"
+import { Behaviour, GameObject } from "../Component.js";
+import { Avatar_Brain_LookAt } from "./Avatar_Brain_LookAt.js";
+
+/** @internal */
+export class AvatarEyeLook_Rotation extends Behaviour {
+
+    @serializable(Object3D)
+    public head: GameObject | null = null;
+    @serializable(Object3D)
+    public eyes: GameObject[] | null = null;
+    @serializable(Object3D)
+    public target: Object3D | null = null;
+
+    private brain: Avatar_Brain_LookAt | null = null;
+
+    awake(): void {
+        if (!this.brain) {
+            this.brain = GameObject.getComponentInParent(this.gameObject, Avatar_Brain_LookAt);
+        }
+        if (!this.brain) {
+            this.brain = GameObject.addComponent(this.gameObject, Avatar_Brain_LookAt);
+        }
+        if (this.brain && this.target) {
+            this.brain.controlledTarget = this.target;
+        }
+    }
+
+
+    private vec: Vector3 = new Vector3();
+    private static forward: Vector3 = new Vector3(0, 0, 1);
+    private currentTargetPoint: Vector3 = new Vector3();
+
+    update(): void {
+        // if(!this.activeAndEnabled) return;
+        const target = this.target;
+        // console.log(target);
+        if (target && this.head) {
+            const eyes = this.eyes;
+            if (eyes) {
+                const worldTarget = utils.getWorldPosition(target);
+                this.currentTargetPoint.lerp(worldTarget, this.context.time.deltaTime / .1);
+
+                const headPosition = utils.getWorldPosition(this.head);
+                const direction = this.vec.copy(this.currentTargetPoint).sub(headPosition).normalize();
+                if (direction.length() < .1) return;
+                const forward = AvatarEyeLook_Rotation.forward;
+                forward.set(0, 0, 1);
+                forward.applyQuaternion(utils.getWorldQuaternion(this.head));
+                const dot = forward.dot(direction);
+                if (dot > .45) {
+                    // console.log(dot);
+                    for (let i = 0; i < eyes.length; i++) {
+                        const eye = eyes[i];
+                        eye.lookAt(this.currentTargetPoint);
+                    }
+                }
+            }
+        }
+    }
+}

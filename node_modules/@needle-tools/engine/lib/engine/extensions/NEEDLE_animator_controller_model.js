@@ -1,0 +1,96 @@
+import { AnimationClip, MathUtils } from "three";
+import { Context } from "../engine_setup.js";
+export class StateMachineBehaviour {
+    _context;
+    get context() { return this._context ?? Context.Current; }
+    get isStateMachineBehaviour() { return true; }
+}
+export class AnimatorStateInfo {
+    /** The name of the animation */
+    name;
+    /** The hash of the name */
+    nameHash;
+    /** The normalized time of the animation */
+    normalizedTime;
+    /** The length of the animation */
+    length;
+    /** The current speed of the animation */
+    speed;
+    /** The current action playing. It can be used to modify the action */
+    action;
+    /**
+     * If the state has any transitions
+     */
+    hasTransitions;
+    constructor(state, normalizedTime, length, speed) {
+        this.name = state.name;
+        this.nameHash = state.hash;
+        this.normalizedTime = normalizedTime;
+        this.length = length;
+        this.speed = speed;
+        this.action = state.motion.action || null;
+        this.hasTransitions = state.transitions?.length > 0 || false;
+    }
+}
+export function createMotion(name, id) {
+    return {
+        name: "Empty",
+        isLooping: false,
+        guid: id?.generateUUID() ?? MathUtils.generateUUID(),
+        index: -1,
+        clip: new AnimationClip(name, 0, []),
+    };
+}
+/// <summary>
+///   <para>The mode of the condition.</para>
+/// </summary>
+export var AnimatorConditionMode;
+(function (AnimatorConditionMode) {
+    /// <summary>
+    ///   <para>The condition is true when the parameter value is true.</para>
+    /// </summary>
+    AnimatorConditionMode[AnimatorConditionMode["If"] = 1] = "If";
+    /// <summary>
+    ///   <para>The condition is true when the parameter value is false.</para>
+    /// </summary>
+    AnimatorConditionMode[AnimatorConditionMode["IfNot"] = 2] = "IfNot";
+    /// <summary>
+    ///   <para>The condition is true when parameter value is greater than the threshold.</para>
+    /// </summary>
+    AnimatorConditionMode[AnimatorConditionMode["Greater"] = 3] = "Greater";
+    /// <summary>
+    ///   <para>The condition is true when the parameter value is less than the threshold.</para>
+    /// </summary>
+    AnimatorConditionMode[AnimatorConditionMode["Less"] = 4] = "Less";
+    /// <summary>
+    ///   <para>The condition is true when parameter value is equal to the threshold.</para>
+    /// </summary>
+    AnimatorConditionMode[AnimatorConditionMode["Equals"] = 6] = "Equals";
+    /// <summary>
+    ///   <para>The condition is true when the parameter value is not equal to the threshold.</para>
+    /// </summary>
+    AnimatorConditionMode[AnimatorConditionMode["NotEqual"] = 7] = "NotEqual";
+})(AnimatorConditionMode || (AnimatorConditionMode = {}));
+/// <summary>
+///   <para>The type of the parameter.</para>
+/// </summary>
+export var AnimatorControllerParameterType;
+(function (AnimatorControllerParameterType) {
+    /// <summary>
+    ///   <para>Float type parameter.</para>
+    /// </summary>
+    AnimatorControllerParameterType[AnimatorControllerParameterType["Float"] = 1] = "Float";
+    /// <summary>
+    ///   <para>Int type parameter.</para>
+    /// </summary>
+    AnimatorControllerParameterType[AnimatorControllerParameterType["Int"] = 3] = "Int";
+    /// <summary>
+    ///   <para>Boolean type parameter.</para>
+    /// </summary>
+    AnimatorControllerParameterType[AnimatorControllerParameterType["Bool"] = 4] = "Bool";
+    /// <summary>
+    ///   <para>Trigger type parameter.</para>
+    /// </summary>
+    AnimatorControllerParameterType[AnimatorControllerParameterType["Trigger"] = 9] = "Trigger";
+})(AnimatorControllerParameterType || (AnimatorControllerParameterType = {}));
+//# sourceMappingURL=NEEDLE_animator_controller_model.js.map

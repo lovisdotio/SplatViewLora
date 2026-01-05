@@ -1,0 +1,15 @@
+import type { PeerJSOption } from "peerjs";
+import Peer from "peerjs";
+export declare function getPeerOptions(): PeerJSOption | undefined;
+export declare function setPeerOptions(opts: PeerJSOption): void;
+export declare function getPeerjsInstance(id?: string, opts?: PeerJSOption): Peer;
+export declare class PeerNetworking {
+    get isHost(): boolean;
+    private _host?;
+    private _client;
+    private _clientData?;
+    constructor();
+    onEnable(): void;
+    private trySetupHost;
+    private trySetupClient;
+}

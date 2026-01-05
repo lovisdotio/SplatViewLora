@@ -1,0 +1,28 @@
+import type { IUSDExporterExtension } from "../../Extension.js";
+import type { USDObject, USDWriter, USDZExporterContext } from "../../ThreeUSDZExporter.js";
+import { type BehaviorModel } from "./BehavioursBuilder.js";
+export interface UsdzBehaviour {
+    createBehaviours?(ext: BehaviorExtension, model: USDObject, context: USDZExporterContext): void;
+    beforeCreateDocument?(ext: BehaviorExtension, context: USDZExporterContext): void | Promise<void>;
+    afterCreateDocument?(ext: BehaviorExtension, context: USDZExporterContext): void | Promise<void>;
+    afterSerialize?(ext: BehaviorExtension, context: USDZExporterContext): void;
+}
+/** internal USDZ behaviours extension */
+export declare class BehaviorExtension implements IUSDExporterExtension {
+    get extensionName(): string;
+    private behaviours;
+    addBehavior(beh: BehaviorModel): void;
+    /** Register audio clip for USDZ export. The clip will be embedded in the resulting file. */
+    addAudioClip(clipUrl: string): string;
+    behaviourComponents: Array<UsdzBehaviour>;
+    private behaviourComponentsCopy;
+    private audioClips;
+    private audioClipsCopy;
+    private targetUuids;
+    getAllTargetUuids(): Set<string>;
+    onBeforeBuildDocument(context: USDZExporterContext): Promise<void> | Promise<any[]>;
+    onExportObject(_object: any, model: USDObject, context: any): void;
+    onAfterBuildDocument(context: USDZExporterContext): void;
+    onAfterHierarchy(context: USDZExporterContext, writer: USDWriter): void;
+    onAfterSerialize(context: USDZExporterContext): Promise<void>;
+}

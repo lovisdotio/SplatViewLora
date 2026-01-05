@@ -1,0 +1,24 @@
+import { Object3D } from "three";
+import ThreeMeshUI from "three-mesh-ui";
+import { FrameEvent } from "../../engine/engine_setup.js";
+import { Behaviour } from "../Component.js";
+import { BaseUIComponent } from "./BaseUIComponent.js";
+export declare function tryGetUIComponent(obj: Object3D): BaseUIComponent | null;
+export declare function isUIObject(obj: Object3D): boolean;
+export type RenderSettings = {
+    renderOnTop?: boolean;
+    doubleSided?: boolean;
+    depthWrite?: boolean;
+    castShadows?: boolean;
+    receiveShadows?: boolean;
+};
+export declare function updateRenderSettings(shadowComponent: Object3D | ThreeMeshUI.MeshUIBaseElement, settings: RenderSettings): void;
+export declare type RevocableProxy = {
+    proxy: any;
+    revoke: () => void;
+};
+/** internal method to proxy a field to detect changes */
+/**@deprecated use watcher instead */
+export declare function onChange<T extends object>(caller: T, field: string, callback: (newValue: any, oldValue: any) => void): RevocableProxy;
+/** internal method to schedule a function at a specific moment in the update loop */
+export declare function scheduleAction(caller: Behaviour, action: Function, timing?: FrameEvent): void;

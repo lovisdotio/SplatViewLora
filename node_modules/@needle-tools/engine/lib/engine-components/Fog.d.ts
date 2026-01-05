@@ -1,0 +1,22 @@
+import { Color, Fog as Fog3 } from "three";
+import { Behaviour } from "./Component.js";
+declare enum FogMode {
+    Linear = 1,
+    Exponential = 2,
+    ExponentialSquared = 3
+}
+/** @internal */
+export declare class Fog extends Behaviour {
+    get fog(): Fog3;
+    get mode(): FogMode;
+    set near(value: number);
+    get near(): number;
+    set far(value: number);
+    get far(): number;
+    set color(value: Color);
+    get color(): Color;
+    private _fog?;
+    onEnable(): void;
+    onDisable(): void;
+}
+export {};

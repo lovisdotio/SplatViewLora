@@ -1,0 +1,26 @@
+include "vec.fbs";
+
+// https://google.github.io/flatbuffers/flatbuffers_guide_tutorial.html
+// https://google.github.io/flatbuffers/md__schemas.html
+
+// try schemales once with schema works
+// https://google.github.io/flatbuffers/flexbuffers.html
+
+struct Transform {
+    position:Vec3;
+    rotation:Vec3;
+    scale:Vec3;
+}
+
+table SyncedTransformModel {
+    /// the guid of the object that this transform info belongs to
+    guid:string;
+    /// if the transform interpolation should be fast, this is true when the send interval is low and we want to have snappy transforms
+    fast:bool;
+    transform: Transform;
+    /// if the server should not save this info
+    dont_save:bool;
+}
+
+// file_identifier "STRS";
+root_type SyncedTransformModel;

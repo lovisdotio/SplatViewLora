@@ -1,0 +1,26 @@
+export declare type VolumeParameterChangedEvent = (newValue: any, oldValue: any, parameter: VolumeParameter) => void;
+export declare type VolumeParameterValueProcessor = (value: any) => any;
+export declare class VolumeParameter {
+    readonly isVolumeParameter = true;
+    constructor(value?: any);
+    private _isInitialized;
+    get isInitialized(): boolean;
+    initialize(value?: any): void;
+    get overrideState(): boolean;
+    set overrideState(val: boolean);
+    private _active;
+    get value(): any;
+    set value(val: any);
+    private _value;
+    private _valueRaw?;
+    set defaultValue(val: any);
+    private _defaultValue;
+    /** enforce the value to be set and onValueChanged to be called if assigned */
+    __init(): void;
+    /** called to modify a changing value before it is saved */
+    valueProcessor: VolumeParameterValueProcessor | undefined;
+    /** called when a value has changed (with the final value) */
+    onValueChanged: VolumeParameterChangedEvent | undefined;
+    private processValue;
+    private testIfValueChanged;
+}

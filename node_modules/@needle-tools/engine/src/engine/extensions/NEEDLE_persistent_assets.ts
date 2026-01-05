@@ -1,0 +1,77 @@
+import { type GLTF, type GLTFLoaderPlugin, GLTFParser } from "three/examples/jsm/loaders/GLTFLoader.js";
+
+import { debugExtension } from "../engine_default_parameters.js";
+import { TypeStore } from "../engine_typestore.js";
+import { type IExtensionReferenceResolver } from "./extension_resolver.js";
+import { resolveReferences } from "./extension_utils.js";
+
+export const EXTENSION_NAME = "NEEDLE_persistent_assets";
+
+export function isPersistentAsset(asset: any): boolean {
+    return asset?.___persistentAsset === true;
+}
+
+declare type PersistentAsset = {
+    assets: Array<any>
+};
+
+export class NEEDLE_persistent_assets implements GLTFLoaderPlugin, IExtensionReferenceResolver {
+
+    get name(): string {
+        return EXTENSION_NAME;
+    }
+
+    private parser: GLTFParser;
+
+    constructor(parser: GLTFParser) {
+        this.parser = parser;
+    }
+
+
+    async afterRoot(_result: GLTF): Promise<void> {
+        if (!this.parser?.json?.extensions) return;
+        const ext = this.parser.json.extensions[EXTENSION_NAME] as PersistentAsset;
+        if (!ext) return;
+        if (debugExtension)
+            console.log(ext);
+        const promises = new Array<Promise<any>>();
+        for (const e of ext?.assets) {
+            const p = resolveReferences(this.parser, e);
+            if (p) {
+                promises.push(p);
+            }
+        }
+        await Promise.all(promises);
+    }
+
+    resolve(parser: GLTFParser, path: string): Promise<void> | null | any {
+        const index = Number.parseInt(path);
+        if (index >= 0) {
+            if (debugExtension)
+                console.log(path);
+            const ext = parser.json.extensions[EXTENSION_NAME] as PersistentAsset;
+            if (ext) {
+                const asset = ext?.assets[index];
+                if (asset) {
+                    if (typeof asset === "object") {
+                        asset.___persistentAsset = true;
+                        const assetTypeInfo = asset["__type"];
+                        if (assetTypeInfo) {
+                            const type = TypeStore.get(assetTypeInfo);
+                            if (type) {
+                                // TODO: assign types here
+                                // console.log(assetTypeInfo, type);
+                                // const instance = new type(asset);
+                                // assign(instance, asset);
+                                // ext.assets[index] = instance;
+                                // return instance;
+                            }
+                        }
+                    }
+                }
+                return asset;
+            }
+        }
+        return null;
+    }
+}

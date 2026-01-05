@@ -18,9 +18,10 @@ A WebGL application for viewing Gaussian Splats and generating LoRA training dat
 
 Automatically generate training datasets for LoRA fine-tuning directly from your 3D captures:
 
-- **24 to 72 poses** captured automatically
+- **32 to 96 poses** captured automatically
 - **3 distance variations**: Close-up, Normal, Wide shot
-- **8 azimuth angles** × **3 elevation levels** = Complete coverage
+- **8 azimuth angles** × **4 elevation levels** = Complete coverage
+- **Elevation angles**: -30° (low-angle), 0° (eye-level), 30° (elevated), 60° (high-angle)
 - **Optional .txt captions** for each image
 - **One-click download** as a ready-to-use dataset (ZIP)
 - Perfect for training LoRA models on your own 3D subjects

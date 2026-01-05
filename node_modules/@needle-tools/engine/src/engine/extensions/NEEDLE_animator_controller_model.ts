@@ -1,0 +1,196 @@
+import { AnimationAction, AnimationClip, MathUtils, Object3D } from "three"
+
+import { InstantiateIdProvider } from "../../engine/engine_networking_instantiate.js";
+import { Animator } from "../../engine-components/Animator.js";
+import { Context } from "../engine_setup.js";
+
+
+export declare type AnimatorControllerModel = {
+    name: string,
+    guid: string,
+    parameters: Parameter[],
+    layers: Layer[],
+}
+
+export declare type Parameter = {
+    name: string;
+    /** the animator string to hash result, test against this if a number is used to get a param value */
+    hash: number;
+    type: AnimatorControllerParameterType;
+    value: number | boolean | string;
+}
+
+export declare type Layer = {
+    name: string,
+    stateMachine: StateMachine
+}
+
+export declare type StateMachine = {
+    defaultState: number;
+    states: State[],
+}
+
+export declare type State = {
+    name: string,
+    hash: number;
+    motion: Motion,
+    transitions: Transition[],
+    behaviours: StateMachineBehaviourModel[],
+    /** The base speed of the animation */
+    speed?: number;
+    /** Set to a animator controller float parameter name to multiply this ontop of the speed value */
+    speedParameter?: string;
+    /** Cycle offset normalized 0-1, used when starting a animation */
+    cycleOffset?: number;
+    /** If set to a parameter then this is used instead of the CycleOffset value to offset the animation start time */
+    cycleOffsetParameter?: string;
+}
+
+export declare type StateMachineBehaviourModel = {
+    typeName: string;
+    properties: object;
+    instance?: StateMachineBehaviour;
+}
+
+export abstract class StateMachineBehaviour {
+    _context?: Context;
+    get context(): Context { return this._context ?? Context.Current; }
+    get isStateMachineBehaviour() { return true; }
+    onStateEnter?(animator: Animator, _animatorStateInfo: AnimatorStateInfo, layerIndex: number);
+    onStateUpdate?(animator: Animator, animatorStateInfo: AnimatorStateInfo, _layerIndex: number);
+    onStateExit?(animator: Animator, animatorStateInfo: AnimatorStateInfo, layerIndex: number);
+}
+
+export class AnimatorStateInfo {
+
+    /** The name of the animation */
+    readonly name: string;
+    /** The hash of the name */
+    readonly nameHash: number;
+    /** The normalized time of the animation */
+    readonly normalizedTime: number;
+    /** The length of the animation */
+    readonly length: number;
+    /** The current speed of the animation */
+    readonly speed: number;
+    /** The current action playing. It can be used to modify the action */
+    readonly action: AnimationAction | null;
+    /**
+     * If the state has any transitions
+     */
+    readonly hasTransitions: boolean;
+
+    constructor(state: State, normalizedTime: number, length: number, speed: number) {
+        this.name = state.name;
+        this.nameHash = state.hash;
+        this.normalizedTime = normalizedTime;
+        this.length = length;
+        this.speed = speed;
+        this.action = state.motion.action || null;
+        this.hasTransitions = state.transitions?.length > 0 || false;
+    }
+}
+
+export declare type Motion = {
+    name: string,
+    isLooping: boolean,
+    guid?: string,
+    /** clip index in gltf animations array */
+    index?: number,
+    /** the resolved clip */
+    clip?: AnimationClip,
+    /** the clip mapping -> which object has which animationclip */
+    clips?: ClipMapping[];
+    action?: AnimationAction,
+    /** used when a transition points to the same state we need another action to blend */
+    action_loopback?: AnimationAction,
+}
+
+export function createMotion(name: string, id?: InstantiateIdProvider): Motion {
+    return {
+        name: "Empty",
+        isLooping: false,
+        guid: id?.generateUUID() ?? MathUtils.generateUUID(),
+        index: -1,
+        clip: new AnimationClip(name, 0, []),
+    }
+}
+
+
+export declare type ClipMapping = {
+    /** the object this clip is for */
+    node: Object3D;
+    /** the animationclip we resolve from a json ptr */
+    clip: AnimationClip;
+}
+
+export declare type Transition = {
+    isExit?: boolean;
+    exitTime: number,
+    hasFixedDuration?: boolean,
+    offset: number,
+    duration: number,
+    hasExitTime: number | boolean,
+    destinationState: number | State,
+    conditions: Condition[],
+    // isAny?: boolean
+}
+
+export declare type Condition = {
+    parameter: string,
+    mode: AnimatorConditionMode,
+    threshold: number,
+}
+
+
+/// <summary>
+///   <para>The mode of the condition.</para>
+/// </summary>
+export enum AnimatorConditionMode {
+    /// <summary>
+    ///   <para>The condition is true when the parameter value is true.</para>
+    /// </summary>
+    If = 1,
+    /// <summary>
+    ///   <para>The condition is true when the parameter value is false.</para>
+    /// </summary>
+    IfNot = 2,
+    /// <summary>
+    ///   <para>The condition is true when parameter value is greater than the threshold.</para>
+    /// </summary>
+    Greater = 3,
+    /// <summary>
+    ///   <para>The condition is true when the parameter value is less than the threshold.</para>
+    /// </summary>
+    Less = 4,
+    /// <summary>
+    ///   <para>The condition is true when parameter value is equal to the threshold.</para>
+    /// </summary>
+    Equals = 6,
+    /// <summary>
+    ///   <para>The condition is true when the parameter value is not equal to the threshold.</para>
+    /// </summary>
+    NotEqual = 7,
+}
+
+/// <summary>
+///   <para>The type of the parameter.</para>
+/// </summary>
+export enum AnimatorControllerParameterType {
+    /// <summary>
+    ///   <para>Float type parameter.</para>
+    /// </summary>
+    Float = 1,
+    /// <summary>
+    ///   <para>Int type parameter.</para>
+    /// </summary>
+    Int = 3,
+    /// <summary>
+    ///   <para>Boolean type parameter.</para>
+    /// </summary>
+    Bool = 4,
+    /// <summary>
+    ///   <para>Trigger type parameter.</para>
+    /// </summary>
+    Trigger = 9,
+}

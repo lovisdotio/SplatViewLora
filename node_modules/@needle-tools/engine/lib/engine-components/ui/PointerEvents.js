@@ -1,0 +1,146 @@
+import { GameObject } from "../Component.js";
+/** This pointer event data object is passed to all event receivers that are currently active
+ * It contains hit information if an object was hovered or clicked
+ * If the event is received in onPointerDown or onPointerMove, you can call `setPointerCapture` to receive onPointerMove events even when the pointer has left the object until you call `releasePointerCapture` or when the pointerUp event happens
+ * You can get additional information about the event or event source via the `event` property (of type `NEPointerEvent`)
+ */
+export class PointerEventData {
+    /** the original event */
+    event;
+    /** the index of the used device
+     * mouse and touch are always 0, controller is the gamepad index or XRController index
+    */
+    get deviceIndex() { return this.event.deviceIndex; }
+    /** a combination of the pointerId + button to uniquely identify the exact input (e.g. LeftController:Button0 = 0, RightController:Button1 = 101) */
+    get pointerId() { return this.event.pointerId; }
+    /**
+     * mouse button 0 === LEFT, 1 === MIDDLE, 2 === RIGHT
+     * */
+    button;
+    buttonName;
+    get pressure() { return this.event.pressure; }
+    /** @returns `true` when `use()` has been called. Default: false */
+    get used() {
+        return this._used;
+    }
+    _used = false;
+    /** mark this event to be used */
+    use() {
+        if (this._used)
+            return;
+        this._used = true;
+        this.event.use();
+    }
+    _propagationStopped = false;
+    get propagationStopped() {
+        return this._propagationStopped;
+    }
+    /** Call this method to stop immediate propagation on the `event` object.
+     * WARNING: this is currently equivalent to stopImmediatePropagation
+     */
+    stopPropagation() {
+        // we currently don't have a distinction between stopPropagation and stopImmediatePropagation  
+        this._propagationStopped = true;
+        this.event.stopImmediatePropagation();
+    }
+    /** Call this method to stop immediate propagation on the `event` object.
+     */
+    stopImmediatePropagation() {
+        this._propagationStopped = true;
+        this.event.stopImmediatePropagation();
+    }
+    /**@ignore internal flag, pointer captured (we dont want to see it in intellisense) */
+    z__pointer_ctured = false;
+    /** Call this method in `onPointerDown` or `onPointerMove` to receive onPointerMove events for this pointerId even when the pointer has left the object until you call `releasePointerCapture` or when the pointerUp event happens
+    */
+    setPointerCapture() {
+        this.z__pointer_ctured = true;
+    }
+    /**@ignore internal flag, pointer capture released */
+    z__pointer_cture_rleased = false;
+    /** call this method in `onPointerDown` or `onPointerMove` to stop receiving onPointerMove events */
+    releasePointerCapture() {
+        this.z__pointer_cture_rleased = true;
+    }
+    /** Who initiated this event */
+    inputSource;
+    /** Returns the input target ray mode e.g. "screen" for 2D mouse and touch events */
+    get mode() { return this.event.mode; }
+    /** The object this event hit or interacted with */
+    object;
+    /** The world position of this event */
+    point;
+    /** The object-space normal of this event */
+    normal;
+    /** */
+    face;
+    /** The distance of the hit point from the origin */
+    distance;
+    /** The instance ID of an object hit by a raycast (if a instanced object was hit) */
+    instanceId;
+    /** The three intersection */
+    intersection;
+    isDown;
+    isUp;
+    isPressed;
+    isClick;
+    isDoubleClick;
+    input;
+    constructor(input, event) {
+        this.event = event;
+        this.input = input;
+        this.button = event.button;
+    }
+    clone() {
+        const clone = new PointerEventData(this.input, this.event);
+        Object.assign(clone, this);
+        return clone;
+    }
+    /**@deprecated use use() */
+    Use() {
+        this.use();
+    }
+    /**@deprecated use stopPropagation() */
+    StopPropagation() {
+        this.event.stopImmediatePropagation();
+    }
+}
+/**
+ * @internal tests if the object has any PointerEventComponent used by the EventSystem
+ * This is used to skip raycasting on objects that have no components that use pointer events
+ */
+export function hasPointerEventComponent(obj, event) {
+    const res = GameObject.foreachComponent(obj, comp => {
+        // ignore disabled components
+        if (!comp.enabled)
+            return undefined;
+        const handler = comp;
+        // if a specific event is passed in, we only check for that event
+        if (event) {
+            switch (event) {
+                case "pointerdown":
+                    if (handler.onPointerDown)
+                        return true;
+                    break;
+                case "pointerup":
+                    if (handler.onPointerUp || handler.onPointerClick)
+                        return true;
+                    break;
+                case "pointermove":
+                    if (handler.onPointerEnter || handler.onPointerExit || handler.onPointerMove)
+                        return true;
+                    break;
+            }
+        }
+        else {
+            if (handler.onPointerDown || handler.onPointerUp || handler.onPointerEnter || handler.onPointerExit || handler.onPointerClick)
+                return true;
+        }
+        // undefined means continue
+        return undefined;
+    }, false);
+    if (res === true)
+        return true;
+    return false;
+}
+//# sourceMappingURL=PointerEvents.js.map

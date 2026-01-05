@@ -1,0 +1,51 @@
+import { Texture } from "three";
+import { EXRLoader } from "three/examples/jsm/loaders/EXRLoader.js";
+import { type GLTFLoaderPlugin, GLTFParser } from "three/examples/jsm/loaders/GLTFLoader.js";
+
+import { getParam } from "../engine_utils.js";
+
+
+const debug = getParam("debugexr");
+
+export class EXT_texture_exr implements GLTFLoaderPlugin {
+	get name() { return "EXT_texture_exr" }
+
+	private parser: GLTFParser;
+
+	constructor(parser: GLTFParser) {
+
+		this.parser = parser;
+		if (debug) console.log(parser);
+
+	}
+
+	loadTexture(textureIndex): Promise<Texture> | null {
+
+		const name = this.name;
+		const parser = this.parser;
+		const json = parser.json;
+
+		const textureDef = json.textures[textureIndex];
+
+		if (debug) console.log("EXT_texture_exr.loadTexture", textureIndex, textureDef);
+
+		if (!textureDef.extensions || !textureDef.extensions[name]) {
+
+			return null;
+
+		}
+
+		const extension = textureDef.extensions[name];
+
+		// TODO should the loader be cached here?
+		const loader = new EXRLoader(parser.options.manager);
+
+		if (debug) console.log("EXT_texture_exr.loadTexture", extension);
+
+		const promise = parser.loadTextureImage(textureIndex, extension.source, loader) as Promise<Texture>;
+		return promise;
+	}
+}
+
+if (typeof window !== "undefined")
+	window.addEventListener('unhandledrejection', (_event: PromiseRejectionEvent) => { });

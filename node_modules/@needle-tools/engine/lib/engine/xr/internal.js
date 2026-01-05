@@ -1,0 +1,26 @@
+import { Matrix4, Object3D, Quaternion, Vector3 } from 'three';
+import { CreateWireCube } from '../engine_gizmos.js';
+import { getParam } from '../engine_utils.js';
+export const flipForwardMatrix = new Matrix4().makeRotationY(Math.PI);
+export const flipForwardQuaternion = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI);
+const debug = getParam("debugwebxr");
+export class ImplictXRRig {
+    priority = -100000;
+    gameObject;
+    isXRRig() {
+        return true;
+    }
+    get isActive() {
+        return this.gameObject.visible;
+    }
+    constructor() {
+        this.gameObject = new Object3D();
+        this.gameObject.name = "Implicit XR Rig";
+        if (debug) {
+            const cube = CreateWireCube(0xff55dd);
+            cube.position.y += .5;
+            this.gameObject.add(cube);
+        }
+    }
+}
+//# sourceMappingURL=internal.js.map

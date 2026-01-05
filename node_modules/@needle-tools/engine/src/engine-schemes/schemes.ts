@@ -1,0 +1,29 @@
+
+import * as flatbuffers from "flatbuffers"
+
+import { SyncedTransformModel } from "./synced-transform-model.js";
+import { Transform } from "./transform.js";
+
+// registry
+export const binaryIdentifierCasts : {[key:string] : (bin:flatbuffers.ByteBuffer) => object} = {};
+
+export function registerBinaryType(identifier:string, cast: (bin:flatbuffers.ByteBuffer) => object) {
+    binaryIdentifierCasts[identifier] = cast;
+}
+
+// called by networking on receiving a new binary blob
+// it's just a little helper method so listeners dont have to cast to types every time
+export function tryCastBinary(bin : flatbuffers.ByteBuffer) : object {
+    const id = bin.getBufferIdentifier();
+    const cast = binaryIdentifierCasts[id];
+    const mod = cast(bin);
+    return mod;
+}
+
+
+export function tryGetGuid(obj:any) : string | undefined | null{
+    if(typeof obj["guid"] === "function"){
+        return obj.guid();
+    }
+    return null;
+}

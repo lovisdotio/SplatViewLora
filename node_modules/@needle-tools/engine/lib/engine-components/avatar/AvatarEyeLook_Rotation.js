@@ -1,0 +1,69 @@
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+import { Object3D, Vector3 } from "three";
+import { serializable } from "../../engine/engine_serialization_decorator.js";
+import * as utils from "../../engine/engine_three_utils.js";
+import { Behaviour, GameObject } from "../Component.js";
+import { Avatar_Brain_LookAt } from "./Avatar_Brain_LookAt.js";
+/** @internal */
+export class AvatarEyeLook_Rotation extends Behaviour {
+    head = null;
+    eyes = null;
+    target = null;
+    brain = null;
+    awake() {
+        if (!this.brain) {
+            this.brain = GameObject.getComponentInParent(this.gameObject, Avatar_Brain_LookAt);
+        }
+        if (!this.brain) {
+            this.brain = GameObject.addComponent(this.gameObject, Avatar_Brain_LookAt);
+        }
+        if (this.brain && this.target) {
+            this.brain.controlledTarget = this.target;
+        }
+    }
+    vec = new Vector3();
+    static forward = new Vector3(0, 0, 1);
+    currentTargetPoint = new Vector3();
+    update() {
+        // if(!this.activeAndEnabled) return;
+        const target = this.target;
+        // console.log(target);
+        if (target && this.head) {
+            const eyes = this.eyes;
+            if (eyes) {
+                const worldTarget = utils.getWorldPosition(target);
+                this.currentTargetPoint.lerp(worldTarget, this.context.time.deltaTime / .1);
+                const headPosition = utils.getWorldPosition(this.head);
+                const direction = this.vec.copy(this.currentTargetPoint).sub(headPosition).normalize();
+                if (direction.length() < .1)
+                    return;
+                const forward = AvatarEyeLook_Rotation.forward;
+                forward.set(0, 0, 1);
+                forward.applyQuaternion(utils.getWorldQuaternion(this.head));
+                const dot = forward.dot(direction);
+                if (dot > .45) {
+                    // console.log(dot);
+                    for (let i = 0; i < eyes.length; i++) {
+                        const eye = eyes[i];
+                        eye.lookAt(this.currentTargetPoint);
+                    }
+                }
+            }
+        }
+    }
+}
+__decorate([
+    serializable(Object3D)
+], AvatarEyeLook_Rotation.prototype, "head", void 0);
+__decorate([
+    serializable(Object3D)
+], AvatarEyeLook_Rotation.prototype, "eyes", void 0);
+__decorate([
+    serializable(Object3D)
+], AvatarEyeLook_Rotation.prototype, "target", void 0);
+//# sourceMappingURL=AvatarEyeLook_Rotation.js.map

@@ -1,0 +1,64 @@
+import { debugExtension } from "../engine_default_parameters.js";
+import { TypeStore } from "../engine_typestore.js";
+import { resolveReferences } from "./extension_utils.js";
+export const EXTENSION_NAME = "NEEDLE_persistent_assets";
+export function isPersistentAsset(asset) {
+    return asset?.___persistentAsset === true;
+}
+export class NEEDLE_persistent_assets {
+    get name() {
+        return EXTENSION_NAME;
+    }
+    parser;
+    constructor(parser) {
+        this.parser = parser;
+    }
+    async afterRoot(_result) {
+        if (!this.parser?.json?.extensions)
+            return;
+        const ext = this.parser.json.extensions[EXTENSION_NAME];
+        if (!ext)
+            return;
+        if (debugExtension)
+            console.log(ext);
+        const promises = new Array();
+        for (const e of ext?.assets) {
+            const p = resolveReferences(this.parser, e);
+            if (p) {
+                promises.push(p);
+            }
+        }
+        await Promise.all(promises);
+    }
+    resolve(parser, path) {
+        const index = Number.parseInt(path);
+        if (index >= 0) {
+            if (debugExtension)
+                console.log(path);
+            const ext = parser.json.extensions[EXTENSION_NAME];
+            if (ext) {
+                const asset = ext?.assets[index];
+                if (asset) {
+                    if (typeof asset === "object") {
+                        asset.___persistentAsset = true;
+                        const assetTypeInfo = asset["__type"];
+                        if (assetTypeInfo) {
+                            const type = TypeStore.get(assetTypeInfo);
+                            if (type) {
+                                // TODO: assign types here
+                                // console.log(assetTypeInfo, type);
+                                // const instance = new type(asset);
+                                // assign(instance, asset);
+                                // ext.assets[index] = instance;
+                                // return instance;
+                            }
+                        }
+                    }
+                }
+                return asset;
+            }
+        }
+        return null;
+    }
+}
+//# sourceMappingURL=NEEDLE_persistent_assets.js.map

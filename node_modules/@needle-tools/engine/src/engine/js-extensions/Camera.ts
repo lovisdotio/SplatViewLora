@@ -1,0 +1,38 @@
+import { PerspectiveCamera } from "three";
+
+// Wrap camera FOV to allow animation of fov
+Object.defineProperty(PerspectiveCamera.prototype, "fov", {
+    get: function () {
+        return this._fov;;
+    },
+    set: function (val) {
+        const changed = val !== this._fov;
+        this._fov = val;
+        if (changed && this.view !== undefined) this.updateProjectionMatrix();
+    },
+    configurable: true
+});
+
+Object.defineProperty(PerspectiveCamera.prototype, "near", {
+    get: function () {
+        return this._near;
+    },
+    set: function (val) {
+        const changed = val !== this._near;
+        this._near = val;
+        if (changed && this.view !== undefined) this.updateProjectionMatrix();
+    },
+    configurable: true
+});
+
+Object.defineProperty(PerspectiveCamera.prototype, "far", {
+    get: function () {
+        return this._far;
+    },
+    set: function (val) {
+        const changed = val !== this._far;
+        this._far = val;
+        if (changed && this.view !== undefined) this.updateProjectionMatrix();
+    },
+    configurable: true
+});

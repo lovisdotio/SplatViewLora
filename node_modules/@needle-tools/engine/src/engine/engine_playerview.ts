@@ -1,0 +1,81 @@
+import { Object3D } from "three";
+
+import { Context } from "./engine_setup.js";
+import { getParam } from "./engine_utils.js";
+
+const debug = getParam("debugplayerview");
+
+export enum ViewDevice {
+    Browser = "browser",
+    Headset = "headset",
+    Handheld = "handheld",
+}
+
+export class PlayerView {
+    readonly userId: string;
+    readonly context: Context;
+
+    viewDevice: ViewDevice = ViewDevice.Browser;
+
+    get currentObject(): Object3D | undefined | null {
+        return this._object;
+    }
+    set currentObject(obj: Object3D | undefined | null) {
+        this._object = obj;
+    }
+
+    get isConnected(): boolean {
+        return this.context.connection.userIsInRoom(this.userId);
+    }
+
+    removed: boolean = false;
+
+    private _object: undefined | Object3D | null;
+
+    constructor(userId: string, context: Context) {
+        this.userId = userId;
+        this.context = context;
+    }
+}
+
+export class PlayerViewManager {
+
+    private readonly context: Context;
+    private readonly playerViews = new Map<string, PlayerView>();
+
+    constructor(context: Context) {
+        this.context = context;
+    }
+
+    setPlayerView(id: string, obj: Object3D | undefined | null, device: ViewDevice) {
+        let view = this.playerViews.get(id);
+        if (!view) {
+            view = new PlayerView(id, this.context);
+            this.playerViews.set(id, view);
+        }
+        view.viewDevice = device;
+        view.currentObject = obj;
+        view.removed = false;
+    }
+
+    getPlayerView(id: string | null | undefined): PlayerView | undefined {
+        if (!id) return undefined;
+        if (!this.context.connection.userIsInRoom(id)) {
+            this.playerViews.delete(id);
+            return undefined;
+        }
+        const view = this.playerViews.get(id);
+        return view;
+    }
+
+    removePlayerView(id: string, device: ViewDevice) {
+        const view = this.playerViews.get(id);
+        if (view?.viewDevice === device) {
+            if (debug)
+                console.log("REMOVE", id);
+            view.removed = true;
+            this.playerViews.delete(id);
+        }
+    }
+
+}

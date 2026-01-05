@@ -1,0 +1,15 @@
+import { clearMessages, LogType, setAllowBalloonMessages, setAllowOverlayMessages } from "./debug_overlay.js";
+export { clearMessages as clearBalloonMessages, 
+/** @deprecated use clearBalloonMessages instead */
+clearMessages as clearOverlayMessages, LogType, setAllowBalloonMessages, setAllowOverlayMessages, };
+export { enableSpatialConsole } from "./debug_spatial_console.js";
+/** Displays a debug message on screen for a certain amount of time */
+export declare function showBalloonMessage(text: string, logType?: LogType): void;
+/** Displays a warning message on screen for a certain amount of time */
+export declare function showBalloonWarning(text: string): void;
+/** Displays an error message on screen for a certain amount of time */
+export declare function showBalloonError(text: string): void;
+/** True when the application runs on a local url */
+export declare function isDevEnvironment(): boolean;
+/** Enforce the dev environment flag to be true or false */
+export declare function setDevEnvironment(val: boolean): void;

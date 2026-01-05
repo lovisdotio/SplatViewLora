@@ -1,0 +1,11 @@
+import { Behaviour } from "../Component.js";
+/** @internal */
+export declare class AvatarBlink_Simple extends Behaviour {
+    private eyes;
+    private lastBlinkTime;
+    private blinkLength;
+    private eyesOpen;
+    private state;
+    awake(): void;
+    update(): void;
+}

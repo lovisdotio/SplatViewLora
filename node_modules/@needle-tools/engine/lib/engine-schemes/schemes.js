@@ -1,0 +1,20 @@
+// registry
+export const binaryIdentifierCasts = {};
+export function registerBinaryType(identifier, cast) {
+    binaryIdentifierCasts[identifier] = cast;
+}
+// called by networking on receiving a new binary blob
+// it's just a little helper method so listeners dont have to cast to types every time
+export function tryCastBinary(bin) {
+    const id = bin.getBufferIdentifier();
+    const cast = binaryIdentifierCasts[id];
+    const mod = cast(bin);
+    return mod;
+}
+export function tryGetGuid(obj) {
+    if (typeof obj["guid"] === "function") {
+        return obj.guid();
+    }
+    return null;
+}
+//# sourceMappingURL=schemes.js.map

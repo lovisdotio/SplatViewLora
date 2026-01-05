@@ -1,0 +1,34 @@
+export var PhysicsMaterialCombine;
+(function (PhysicsMaterialCombine) {
+    PhysicsMaterialCombine[PhysicsMaterialCombine["Average"] = 0] = "Average";
+    PhysicsMaterialCombine[PhysicsMaterialCombine["Multiply"] = 1] = "Multiply";
+    PhysicsMaterialCombine[PhysicsMaterialCombine["Minimum"] = 2] = "Minimum";
+    PhysicsMaterialCombine[PhysicsMaterialCombine["Maximum"] = 3] = "Maximum";
+})(PhysicsMaterialCombine || (PhysicsMaterialCombine = {}));
+export var CollisionDetectionMode;
+(function (CollisionDetectionMode) {
+    CollisionDetectionMode[CollisionDetectionMode["Discrete"] = 0] = "Discrete";
+    CollisionDetectionMode[CollisionDetectionMode["Continuous"] = 1] = "Continuous";
+})(CollisionDetectionMode || (CollisionDetectionMode = {}));
+export var RigidbodyConstraints;
+(function (RigidbodyConstraints) {
+    RigidbodyConstraints[RigidbodyConstraints["None"] = 0] = "None";
+    RigidbodyConstraints[RigidbodyConstraints["FreezePositionX"] = 2] = "FreezePositionX";
+    RigidbodyConstraints[RigidbodyConstraints["FreezePositionY"] = 4] = "FreezePositionY";
+    RigidbodyConstraints[RigidbodyConstraints["FreezePositionZ"] = 8] = "FreezePositionZ";
+    RigidbodyConstraints[RigidbodyConstraints["FreezePosition"] = 14] = "FreezePosition";
+    RigidbodyConstraints[RigidbodyConstraints["FreezeRotationX"] = 16] = "FreezeRotationX";
+    RigidbodyConstraints[RigidbodyConstraints["FreezeRotationY"] = 32] = "FreezeRotationY";
+    RigidbodyConstraints[RigidbodyConstraints["FreezeRotationZ"] = 64] = "FreezeRotationZ";
+    RigidbodyConstraints[RigidbodyConstraints["FreezeRotation"] = 112] = "FreezeRotation";
+    RigidbodyConstraints[RigidbodyConstraints["FreezeAll"] = 126] = "FreezeAll";
+})(RigidbodyConstraints || (RigidbodyConstraints = {}));
+export var Axes;
+(function (Axes) {
+    Axes[Axes["None"] = 0] = "None";
+    Axes[Axes["X"] = 2] = "X";
+    Axes[Axes["Y"] = 4] = "Y";
+    Axes[Axes["Z"] = 8] = "Z";
+    Axes[Axes["All"] = -1] = "All";
+})(Axes || (Axes = {}));
+//# sourceMappingURL=engine_physics.types.js.map

@@ -1,0 +1,30 @@
+import { BufferGeometry, Material, Matrix4, Object3D } from "three";
+import { USDDocument, USDObject } from "../../ThreeUSDZExporter.js";
+import { ActionModel } from "./BehavioursBuilder.js";
+export declare abstract class DocumentAction {
+    get id(): string;
+    protected object: Object3D;
+    protected model?: USDObject;
+    constructor(obj: Object3D);
+    apply(document: USDDocument): void;
+    protected abstract onApply(document: USDDocument): any;
+}
+export declare class VariantAction extends DocumentAction {
+    constructor(obj: Object3D, matrix?: Matrix4, material?: Material, geometry?: BufferGeometry);
+    private matrix;
+    private material;
+    private geometry;
+    protected onApply(_: USDDocument): void;
+    private _enableAction?;
+    private _disableAction?;
+    enable(): ActionModel;
+    disable(): ActionModel;
+}
+export declare class ActionCollection {
+    private actions;
+    private sortedActions?;
+    constructor(actions: DocumentAction[]);
+    private organize;
+    /** returns all document actions affecting the object passed in */
+    getActions(obj: Object3D): DocumentAction[] | null;
+}

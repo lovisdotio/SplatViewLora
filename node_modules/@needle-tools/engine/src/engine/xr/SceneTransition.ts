@@ -1,0 +1,79 @@
+import { Camera, DoubleSide, Mesh, MeshBasicMaterial, PlaneGeometry } from "three";
+
+import { Mathf } from "../engine_math.js";
+
+export class SceneTransition {
+
+    private readonly _fadeToColorQuad: Mesh;
+    private readonly _fadeToColorMaterial: MeshBasicMaterial;
+
+    constructor() {
+        this._fadeToColorMaterial = new MeshBasicMaterial({
+            color: 0x000000,
+            transparent: true,
+            depthTest: false,
+            fog: false,
+            side: DoubleSide,
+        });
+        this._fadeToColorQuad = new Mesh(new PlaneGeometry(10, 10), this._fadeToColorMaterial);
+    }
+
+    dispose() {
+        this._fadeToColorQuad.geometry.dispose();
+        this._fadeToColorMaterial.dispose();
+    }
+
+    update(camera: Camera, dt: number) {
+        const quad = this._fadeToColorQuad;
+        const mat = this._fadeToColorMaterial;
+
+        // make sure the quad is in the scene
+        if (quad.parent !== camera && mat.opacity > 0) {
+            camera.add(quad);
+        }
+        else if (mat.opacity === 0) {
+            quad.removeFromParent();
+        }
+        quad.layers.set(2);
+        quad.material = this._fadeToColorMaterial!;
+        quad.position.z = -1;
+        // because of TMUI
+        quad.renderOrder = Infinity;
+        // perform the fade
+        const fadeValue = this._requestedFadeValue;
+        mat.opacity = Mathf.lerp(mat.opacity, fadeValue, dt / .03);
+
+        // check if we're close enough to the desired value:
+        if (Math.abs(mat.opacity - fadeValue) <= .01) {
+            if (this._transitionResolve) {
+                this._transitionResolve();
+                this._transitionResolve = null;
+                this._transitionPromise = null;
+                this._requestedFadeValue = 0;
+            }
+        }
+    }
+    remove() {
+        this._fadeToColorQuad.removeFromParent();
+    }
+
+    /** Call to fade rendering to black for a short moment (the returned promise will be resolved when fully black)   
+     * This can be used to mask scene transitions or teleportation
+     * @returns a promise that is resolved when the screen is fully black
+     * @example `fadeTransition().then(() => { <fully_black> })`
+    */
+    fadeTransition() {
+        if (this._transitionPromise) return this._transitionPromise;
+        this._requestedFadeValue = 1;
+        const promise = new Promise<void>(resolve => {
+            this._transitionResolve = resolve;
+        });
+        this._transitionPromise = promise;
+        return promise;
+    }
+
+
+    private _requestedFadeValue: number = 0;
+    private _transitionPromise: Promise<void> | null = null;
+    private _transitionResolve: (() => void) | null = null;
+}

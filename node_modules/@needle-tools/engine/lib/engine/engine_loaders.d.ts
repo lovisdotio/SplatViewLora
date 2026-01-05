@@ -1,0 +1,13 @@
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { Context } from "./engine_setup.js";
+export declare function setDracoDecoderPath(path: string | undefined): void;
+export declare function setDracoDecoderType(type: string | undefined): void;
+export declare function setKtx2TranscoderPath(path: string): void;
+export declare function setMeshoptDecoder(_meshoptDecoder: any): void;
+/**
+ * Add Draco, Meshopt and KTX2 loaders to a GLTFLoader instance.
+ * @param loader The GLTFLoader instance to add the loaders to.
+ * @param context The context object containing the renderer.
+ * @returns The GLTFLoader instance with the loaders added.
+ */
+export declare function addDracoAndKTX2Loaders(loader: GLTFLoader, context: Pick<Context, "renderer">): GLTFLoader;

@@ -1,0 +1,2 @@
+export declare function isLocalNetwork(hostname?: string): boolean;
+export declare function isHostedOnGlitch(): boolean;

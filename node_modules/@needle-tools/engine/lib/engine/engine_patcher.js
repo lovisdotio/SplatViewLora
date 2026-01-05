@@ -1,0 +1,143 @@
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/hasOwn
+import { getParam } from "./engine_utils.js";
+const debugPatch = getParam("debugpatch");
+/**
+ * Use patcher for patching properties insteadof calling Object.defineProperty individually
+ * since this will cause conflicts if multiple patches need to be applied to the same property
+ */
+export function addPatch(prototype, fieldName, beforeCallback, afterCallback) {
+    const debug = debugPatch === fieldName;
+    // If no callbacks are provided, we don't need to do anything
+    if (!beforeCallback && !afterCallback) {
+        return;
+    }
+    // TODO: we probably want to turn this into a symbol to prevent anyone from overriding it
+    // But when we need to store the symbol per prototype to allow e.g. material disposing to iterate those and dispose all
+    // TODO: making symbols here breaks e.g. progressive textures because they iterate on the property keys
+    const backingField = fieldName + "___needle"; // Symbol(fieldName);// + " (patched)";
+    internalAddPatch(prototype, fieldName, beforeCallback, afterCallback);
+    const desc = Object.getOwnPropertyDescriptor(prototype, fieldName);
+    const existing = prototype[fieldName];
+    if (debug)
+        console.log("Patch", prototype.constructor.name, fieldName, desc, existing);
+    if (desc) {
+        if (debug)
+            console.log("Apply patch with existing descriptor", prototype.constructor.name, fieldName, desc);
+        if (typeof desc.value === "function") {
+            prototype[fieldName] = ensureFunctionWrapped(desc.value, prototype, fieldName);
+        }
+    }
+    else {
+        if (debug)
+            console.log("Create patch with new property", prototype.constructor.name, fieldName, desc);
+        Object.defineProperty(prototype, fieldName, {
+            set: function (value) {
+                if (typeof value === "function") {
+                    // TODO: not sure if this is correct (if the value that is set is a function)
+                    this[backingField] = ensureFunctionWrapped(value, prototype, fieldName);
+                }
+                else {
+                    const prev = this[backingField];
+                    executePrefixes(prototype, fieldName, this, prev, value);
+                    this[backingField] = value;
+                    executePostFixes(prototype, fieldName, this, prev, value);
+                }
+            },
+            get: function () {
+                const value = this[backingField];
+                if (typeof value === "function") {
+                    if (value[backingField]) {
+                        return value[backingField];
+                    }
+                }
+                return value;
+            }
+        });
+    }
+}
+/** Removes prefix or postfix */
+export function removePatch(prototype, fieldName, prefixOrPostfix) {
+    const patches = getPatches(prototype, fieldName);
+    if (patches) {
+        for (let i = patches.length - 1; i >= 0; i--) {
+            const patch = patches[i];
+            // Remove either the prefix or postfix
+            if (patch.prefix === prefixOrPostfix) {
+                patch.prefix = null;
+            }
+            if (patch.postfix === prefixOrPostfix) {
+                patch.postfix = null;
+            }
+            // If the patch is empty, remove it from the list
+            if (!patch.prefix && !patch.postfix) {
+                patches.splice(i, 1);
+            }
+        }
+    }
+}
+const $wrappedFunctionSymbol = Symbol("Needle:Patches:WrappedFunction");
+function ensureFunctionWrapped(originalFunction, prototype, fieldname) {
+    if (originalFunction[$wrappedFunctionSymbol]) {
+        return originalFunction;
+    }
+    const wrappedFunction = function (...args) {
+        executePrefixes(prototype, fieldname, this, ...args);
+        const result = originalFunction.apply(this, args);
+        executePostFixes(prototype, fieldname, this, result, ...args);
+        return result;
+    };
+    wrappedFunction[$wrappedFunctionSymbol] = true;
+    return wrappedFunction;
+}
+export const NeedlePatchesKey = "Needle:Patches";
+function patches() {
+    if (!globalThis[NeedlePatchesKey]) {
+        globalThis[NeedlePatchesKey] = new WeakMap();
+    }
+    return globalThis[NeedlePatchesKey];
+}
+function getPatches(prototype, fieldName) {
+    const patchesMap = patches().get(prototype);
+    if (!patchesMap) {
+        return null;
+    }
+    return patchesMap.get(fieldName);
+    ;
+}
+function internalAddPatch(prototype, fieldName, prefix, postfix) {
+    let patchesMap = patches().get(prototype);
+    if (!patchesMap) {
+        patchesMap = new Map();
+        patches().set(prototype, patchesMap);
+    }
+    let patchList = patchesMap.get(fieldName);
+    if (!patchList) {
+        patchList = [];
+        patchesMap.set(fieldName, patchList);
+    }
+    patchList.push({
+        prefix: prefix,
+        postfix: postfix
+    });
+}
+function executePrefixes(prototype, fieldName, instance, ...args) {
+    if (!instance)
+        return;
+    const patches = getPatches(prototype, fieldName);
+    if (patches) {
+        for (const patchInfo of patches) {
+            patchInfo.prefix?.call(instance, ...args);
+        }
+    }
+}
+function executePostFixes(prototype, fieldName, instance, result, ...args) {
+    if (!instance)
+        return;
+    const patches = getPatches(prototype, fieldName);
+    if (patches) {
+        for (const patchInfo of patches) {
+            patchInfo.postfix?.call(instance, result, ...args);
+        }
+    }
+}
+//# sourceMappingURL=engine_patcher.js.map

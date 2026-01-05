@@ -1,0 +1,159 @@
+import { deserializeObject, serializable,SerializationContext } from "../../engine/engine_serialization.js";
+import { TypeSerializer } from "../../engine/engine_serialization_core.js";
+import { getParam } from "../../engine/engine_utils.js";
+
+
+
+export declare type VolumeParameterChangedEvent = (newValue: any, oldValue: any, parameter: VolumeParameter) => void;
+export declare type VolumeParameterValueProcessor = (value: any) => any;
+
+const debug = getParam("debugpost");
+
+export class VolumeParameter {
+
+    readonly isVolumeParameter = true;
+
+    constructor(value?: any) {
+        if (value !== undefined)
+            this.initialize(value);
+    }
+
+    private _isInitialized: boolean = false;
+    get isInitialized() { return this._isInitialized; }
+
+    initialize(value?: any) {
+        if (value !== undefined) {
+            this._value = value;
+            this._defaultValue = value;
+            this._valueRaw = value;
+            this._isInitialized = true;
+        }
+    }
+
+    @serializable()
+    get overrideState(): boolean {
+        return this._active;
+    }
+    set overrideState(val: boolean) {
+        if (this._active === val) return;
+        this._active = val;
+        const value = val ? this._valueRaw : this._defaultValue;
+        this.processValue(value, true);
+    }
+    private _active: boolean = true;
+
+
+
+    @serializable()
+    get value() {
+        return this._valueRaw;
+    }
+    set value(val: any) {
+        // When a user creates an effect and then just sets a VolumeParameter via `effect.param.value` we want to use this value as the initial value
+        if (!this.isInitialized) this.initialize(val);
+        this.processValue(val, false);
+    }
+    private _value: any;
+    private _valueRaw?: any;
+
+
+    set defaultValue(val: any) {
+        this._defaultValue = val;
+    }
+    private _defaultValue: any = undefined;
+
+
+    /** enforce the value to be set and onValueChanged to be called if assigned */
+    __init() {
+        this.processValue(this._valueRaw, true);
+    }
+
+    /** called to modify a changing value before it is saved */
+    valueProcessor: VolumeParameterValueProcessor | undefined;
+    /** called when a value has changed (with the final value) */
+    onValueChanged: VolumeParameterChangedEvent | undefined;
+
+
+    private processValue(val: any, forceUpdate: boolean): any {
+        if (val === null || val === undefined) return;
+
+        if (!forceUpdate && this.testIfValueChanged(val) === false)
+            return;
+
+        const oldValue = this._value;
+        if (debug) {
+            let hasChanged = true;
+            if (typeof oldValue == "number" && typeof val == "number") {
+                const oldFixed = oldValue?.toFixed(4);
+                const newFixed = val?.toFixed(4);
+                if (oldFixed != newFixed) {
+                    hasChanged = true;
+                }
+                else hasChanged = false;
+            }
+        }
+
+        if (!this._active && this._defaultValue !== undefined) {
+            // when setting the default value we dont process them (default values are explicitly set from the effect that declares them 
+            // with the value that is expected to received when the parameter is disabled)
+            this._value = this._defaultValue;
+            val = this._defaultValue;
+            this._valueRaw = val;
+        }
+        else {
+            this._valueRaw = val;
+            if (this._active && this.valueProcessor)
+                val = this.valueProcessor(val);
+            this._value = val;
+        }
+
+        if (this.onValueChanged) {
+            this.onValueChanged(val, oldValue, this);
+        }
+    }
+
+    private testIfValueChanged(newValue: any): boolean {
+
+        if (this._valueRaw === newValue)
+            return false;
+
+        // TODO: may need checks for colors or vectors (check by xyz,rgb because they might come in as anonymous objects via editor modifications)
+
+        return true;
+    }
+}
+
+
+
+class VolumeParameterSerializer extends TypeSerializer {
+    constructor() {
+        super([VolumeParameter]);
+    }
+    onSerialize(_data: any, _context: SerializationContext) {
+    }
+    onDeserialize(data: { value: any, overrideState: boolean }, context: SerializationContext) {
+        const target = context.target;
+        const name = context.path;
+
+        let parameter: VolumeParameter | undefined;
+        if (target && name) {
+            parameter = target[name];
+        }
+
+        if (!(typeof parameter === "object") || (typeof parameter === "object" && (parameter as VolumeParameter).isVolumeParameter !== true)) {
+            parameter = new VolumeParameter();
+        }
+
+        if (typeof data === "object" && "value" in data) {
+            const value = data.value;
+            parameter.initialize(value);
+            parameter.overrideState = data.overrideState;
+        }
+        else {
+            parameter.value = data;
+        }
+
+        return parameter;
+    }
+}
+new VolumeParameterSerializer();

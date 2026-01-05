@@ -1,0 +1,2 @@
+Using flatbuffer compiler 2.0
+https://github.com/google/flatbuffers/releases/tag/v2.0.0

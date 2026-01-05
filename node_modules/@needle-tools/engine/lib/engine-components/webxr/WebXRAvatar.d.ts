@@ -1,0 +1,27 @@
+import { Object3D } from "three";
+import { Behaviour } from "../Component.js";
+import { XRFlag } from "./XRFlag.js";
+export declare const debug: string | number | boolean;
+export type AvatarMarkerEventArgs = {
+    avatarMarker: AvatarMarker;
+    gameObject: Object3D;
+};
+/**
+ * This is used to mark an object being controlled / owned by a player
+ * This system might be refactored and moved to a more centralized place in a future version
+ */
+export declare class AvatarMarker extends Behaviour {
+    static getAvatar(index: number): AvatarMarker | null;
+    static instances: AvatarMarker[];
+    static onAvatarMarkerCreated(cb: (args: AvatarMarkerEventArgs) => void): Function;
+    static onAvatarMarkerDestroyed(cb: (args: AvatarMarkerEventArgs) => void): Function;
+    private static _onNewAvatarMarkerAdded;
+    private static _onAvatarMarkerDestroyed;
+    connectionId: string;
+    avatar?: Object3D & {
+        flags?: XRFlag[];
+    };
+    awake(): void;
+    onDestroy(): void;
+    isLocalAvatar(): boolean;
+}

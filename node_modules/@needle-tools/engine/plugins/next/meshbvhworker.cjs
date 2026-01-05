@@ -1,0 +1,19 @@
+
+// Transform the mesh bvh worker to include a default export function that returns a worker instance.
+// This is needed to make the worker work with webpack 5.
+// See https://forum.needle.tools/t/import-error-in-generatemeshbvhworker-needle-and-nextjs-integration
+
+/**
+ * @param {string} source
+ */
+module.exports = function (source, _map) {
+    if (source.includes("Modified by Needle")) return source;
+    console.log("Transform mesh-bvh-worker")
+    return `// Modified by Needle
+const workerCode = ${JSON.stringify(source)};
+const blob = new Blob([workerCode], { type: 'application/javascript' });
+const workerUrl = URL.createObjectURL(blob);
+export default function() {
+    return new Worker(workerUrl, { type: 'module' });
+};`;
+};

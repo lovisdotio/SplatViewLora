@@ -1,0 +1,12 @@
+import { Material, Object3D, Texture } from "three";
+import { GLTFParser, GLTFReference } from "three/examples/jsm/loaders/GLTFLoader.js";
+export declare function resolveReferences(parser: GLTFParser, obj: object | string): Promise<any>;
+/**
+ * Utility method to check if two materials were created from the same glTF material
+ */
+export declare function compareAssociation<T extends Material>(obj1: T, obj2: T): boolean;
+/**
+ * Setting
+ * @hidden
+ */
+export declare function maskGltfAssociation(obj: Object3D | Material | Texture | GLTFReference, identifier: string): void;

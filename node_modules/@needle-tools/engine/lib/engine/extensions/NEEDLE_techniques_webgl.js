@@ -1,0 +1,565 @@
+import { AlwaysDepth, BackSide, DoubleSide, EqualDepth, FrontSide, GLSL3, GreaterDepth, GreaterEqualDepth, LessDepth, LessEqualDepth, LinearSRGBColorSpace, Matrix4, NotEqualDepth, RawShaderMaterial, Texture, Vector3, Vector4 } from 'three';
+import { Context } from '../engine_setup.js';
+import { FindShaderTechniques, SetUnitySphericalHarmonics, ToUnityMatrixArray, whiteDefaultTexture } from '../engine_shaders.js';
+import { getWorldPosition } from "../engine_three_utils.js";
+import { getParam } from "../engine_utils.js";
+import * as SHADERDATA from "../shaders/shaderData.js";
+const debug = getParam("debugcustomshader");
+export const NEEDLE_TECHNIQUES_WEBGL_NAME = "NEEDLE_techniques_webgl";
+//@ts-ignore
+var UniformType;
+(function (UniformType) {
+    UniformType[UniformType["INT"] = 5124] = "INT";
+    UniformType[UniformType["FLOAT"] = 5126] = "FLOAT";
+    UniformType[UniformType["FLOAT_VEC2"] = 35664] = "FLOAT_VEC2";
+    UniformType[UniformType["FLOAT_VEC3"] = 35665] = "FLOAT_VEC3";
+    UniformType[UniformType["FLOAT_VEC4"] = 35666] = "FLOAT_VEC4";
+    UniformType[UniformType["INT_VEC2"] = 35667] = "INT_VEC2";
+    UniformType[UniformType["INT_VEC3"] = 35668] = "INT_VEC3";
+    UniformType[UniformType["INT_VEC4"] = 35669] = "INT_VEC4";
+    UniformType[UniformType["BOOL"] = 35670] = "BOOL";
+    UniformType[UniformType["BOOL_VEC2"] = 35671] = "BOOL_VEC2";
+    UniformType[UniformType["BOOL_VEC3"] = 35672] = "BOOL_VEC3";
+    UniformType[UniformType["BOOL_VEC4"] = 35673] = "BOOL_VEC4";
+    UniformType[UniformType["FLOAT_MAT2"] = 35674] = "FLOAT_MAT2";
+    UniformType[UniformType["FLOAT_MAT3"] = 35675] = "FLOAT_MAT3";
+    UniformType[UniformType["FLOAT_MAT4"] = 35676] = "FLOAT_MAT4";
+    UniformType[UniformType["SAMPLER_2D"] = 35678] = "SAMPLER_2D";
+    UniformType[UniformType["SAMPLER_3D"] = 35680] = "SAMPLER_3D";
+    UniformType[UniformType["SAMPLER_CUBE"] = 35681] = "SAMPLER_CUBE";
+    UniformType[UniformType["UNKNOWN"] = 0] = "UNKNOWN";
+})(UniformType || (UniformType = {}));
+class ObjectRendererData {
+    objectToWorldMatrix = new Matrix4();
+    worldToObjectMatrix = new Matrix4();
+    objectToWorld = new Array();
+    worldToObject = new Array();
+    updateFrom(obj) {
+        this.objectToWorldMatrix.copy(obj.matrixWorld);
+        ToUnityMatrixArray(this.objectToWorldMatrix, this.objectToWorld);
+        this.worldToObjectMatrix.copy(obj.matrixWorld).invert();
+        ToUnityMatrixArray(this.worldToObjectMatrix, this.worldToObject);
+    }
+}
+var CullMode;
+(function (CullMode) {
+    CullMode[CullMode["Off"] = 0] = "Off";
+    CullMode[CullMode["Front"] = 1] = "Front";
+    CullMode[CullMode["Back"] = 2] = "Back";
+})(CullMode || (CullMode = {}));
+var ZTestMode;
+(function (ZTestMode) {
+    ZTestMode[ZTestMode["Never"] = 1] = "Never";
+    ZTestMode[ZTestMode["Less"] = 2] = "Less";
+    ZTestMode[ZTestMode["Equal"] = 3] = "Equal";
+    ZTestMode[ZTestMode["LEqual"] = 4] = "LEqual";
+    ZTestMode[ZTestMode["Greater"] = 5] = "Greater";
+    ZTestMode[ZTestMode["NotEqual"] = 6] = "NotEqual";
+    ZTestMode[ZTestMode["GEqual"] = 7] = "GEqual";
+    ZTestMode[ZTestMode["Always"] = 8] = "Always";
+})(ZTestMode || (ZTestMode = {}));
+export class CustomShader extends RawShaderMaterial {
+    identifier;
+    onBeforeRenderSceneCallback = this.onBeforeRenderScene.bind(this);
+    clone() {
+        const clone = super.clone();
+        createUniformProperties(clone);
+        return clone;
+    }
+    constructor(identifier, ...args) {
+        super(...args);
+        this.identifier = identifier;
+        // this["normalMap"] = true;
+        // this.needsUpdate = true;
+        if (debug)
+            console.log(this);
+        //@ts-ignore - TODO: how to override and do we even need this?
+        this.type = "NEEDLE_CUSTOM_SHADER";
+        if (!this.uniforms[this._objToWorldName])
+            this.uniforms[this._objToWorldName] = { value: [] };
+        if (!this.uniforms[this._worldToObjectName])
+            this.uniforms[this._worldToObjectName] = { value: [] };
+        if (!this.uniforms[this._viewProjectionName])
+            this.uniforms[this._viewProjectionName] = { value: [] };
+        if (this.uniforms[this._sphericalHarmonicsName]) {
+            // this.waitForLighting();
+        }
+        if (this.depthTextureUniform || this.opaqueTextureUniform) {
+            Context.Current.pre_render_callbacks.push(this.onBeforeRenderSceneCallback);
+        }
+    }
+    dispose() {
+        super.dispose();
+        const index = Context.Current.pre_render_callbacks.indexOf(this.onBeforeRenderSceneCallback);
+        if (index >= 0)
+            Context.Current.pre_render_callbacks.splice(index, 1);
+    }
+    /* REMOVED, we don't have Lit shader support for now
+    async waitForLighting() {
+        const context: Context = Context.Current;
+        if (!context) {
+            console.error("Missing context");
+            return;
+        }
+        const data = await context.sceneLighting.internalGetSceneLightingData(this.identifier);
+        if (!data || !data.array) {
+            console.warn("Missing lighting data for custom shader, getSceneLightingData did not return anything");
+            return;
+        }
+        if (debug)
+            console.log(data);
+        const array = data.array;
+        const envTexture = data.texture;
+        // console.log(envTexture);
+        this.uniforms["unity_SpecCube0"] = { value: envTexture };
+        SetUnitySphericalHarmonics(this.uniforms, array);
+        const hdr = Math.sqrt(Math.PI * .5);
+        this.uniforms["unity_SpecCube0_HDR"] = { value: new Vector4(hdr, hdr, hdr, hdr) };
+        // this.needsUpdate = true;
+        // this.uniformsNeedUpdate = true;
+        if (debug) console.log("Set environment lighting", this.uniforms);
+    }
+    */
+    _sphericalHarmonicsName = "unity_SpecCube0";
+    _objToWorldName = "hlslcc_mtx4x4unity_ObjectToWorld";
+    _worldToObjectName = "hlslcc_mtx4x4unity_WorldToObject";
+    static viewProjection = new Matrix4();
+    static _viewProjectionValues = [];
+    _viewProjectionName = "hlslcc_mtx4x4unity_MatrixVP";
+    static viewMatrix = new Matrix4();
+    static _viewMatrixValues = [];
+    _viewMatrixName = "hlslcc_mtx4x4unity_MatrixV";
+    static _worldSpaceCameraPosName = "_WorldSpaceCameraPos";
+    static _worldSpaceCameraPos = new Vector3();
+    static _mainLightColor = new Vector4();
+    static _mainLightPosition = new Vector3();
+    static _lightData = new Vector4();
+    _rendererData = new ObjectRendererData();
+    get depthTextureUniform() {
+        if (!this.uniforms)
+            return undefined;
+        return this.uniforms["_CameraDepthTexture"];
+    }
+    get opaqueTextureUniform() {
+        if (!this.uniforms)
+            return undefined;
+        return this.uniforms["_CameraOpaqueTexture"];
+    }
+    onBeforeRenderScene() {
+        if (this.opaqueTextureUniform) {
+            Context.Current.setRequireColor(true);
+        }
+        if (this.depthTextureUniform) {
+            Context.Current.setRequireDepth(true);
+        }
+    }
+    onBeforeRender(_renderer, _scene, camera, _geometry, obj, _group) {
+        if (!_geometry.attributes["tangent"])
+            _geometry.computeTangents();
+        this.onUpdateUniforms(camera, obj);
+    }
+    onUpdateUniforms(camera, obj) {
+        const context = Context.Current;
+        // TODO cache by camera
+        // if (context.time.frame != this._lastFrame)
+        {
+            if (camera) {
+                if (CustomShader.viewProjection && this.uniforms[this._viewProjectionName]) {
+                    CustomShader.viewProjection.copy(camera.projectionMatrix).multiply(camera.matrixWorldInverse);
+                    ToUnityMatrixArray(CustomShader.viewProjection, CustomShader._viewProjectionValues);
+                }
+                if (CustomShader.viewMatrix && this.uniforms[this._viewMatrixName]) {
+                    CustomShader.viewMatrix.copy(camera.matrixWorldInverse);
+                    ToUnityMatrixArray(CustomShader.viewMatrix, CustomShader._viewMatrixValues);
+                }
+                if (this.uniforms[CustomShader._worldSpaceCameraPosName]) {
+                    CustomShader._worldSpaceCameraPos.setFromMatrixPosition(camera.matrixWorld);
+                }
+            }
+        }
+        // this._lastFrame = context.time.frame;
+        if (this.uniforms["_TimeParameters"]) {
+            this.uniforms["_TimeParameters"].value = context.sceneLighting.timeVec4;
+        }
+        if (this.uniforms["_Time"]) {
+            const _time = this.uniforms["_Time"].value;
+            _time.x = context.sceneLighting.timeVec4.x / 20;
+            _time.y = context.sceneLighting.timeVec4.x;
+            _time.z = context.sceneLighting.timeVec4.x * 2;
+            _time.w = context.sceneLighting.timeVec4.x * 3;
+        }
+        if (this.uniforms["_SinTime"]) {
+            const _time = this.uniforms["_SinTime"].value;
+            _time.x = Math.sin(context.sceneLighting.timeVec4.x / 8);
+            _time.y = Math.sin(context.sceneLighting.timeVec4.x / 4);
+            _time.z = Math.sin(context.sceneLighting.timeVec4.x / 2);
+            _time.w = Math.sin(context.sceneLighting.timeVec4.x);
+        }
+        if (this.uniforms["_CosTime"]) {
+            const _time = this.uniforms["_CosTime"].value;
+            _time.x = Math.cos(context.sceneLighting.timeVec4.x / 8);
+            _time.y = Math.cos(context.sceneLighting.timeVec4.x / 4);
+            _time.z = Math.cos(context.sceneLighting.timeVec4.x / 2);
+            _time.w = Math.cos(context.sceneLighting.timeVec4.x);
+        }
+        if (this.uniforms["unity_DeltaTime"]) {
+            const _time = this.uniforms["unity_DeltaTime"].value;
+            _time.x = context.time.deltaTime;
+            _time.y = 1 / context.time.deltaTime;
+            _time.z = context.time.smoothedDeltaTime;
+            _time.w = 1 / context.time.smoothedDeltaTime;
+        }
+        const mainLight = context.mainLight;
+        if (mainLight) {
+            const lp = getWorldPosition(mainLight.gameObject, CustomShader._mainLightPosition);
+            this.uniforms["_MainLightPosition"] = { value: lp.normalize() };
+            CustomShader._mainLightColor.set(mainLight.color.r, mainLight.color.g, mainLight.color.b, 0);
+            this.uniforms["_MainLightColor"] = { value: CustomShader._mainLightColor };
+            const intensity = mainLight.intensity; // * (Math.PI * .5);
+            CustomShader._lightData.z = intensity;
+            this.uniforms["unity_LightData"] = { value: CustomShader._lightData };
+        }
+        if (camera) {
+            if (CustomShader.viewProjection && this.uniforms[this._viewProjectionName]) {
+                this.uniforms[this._viewProjectionName].value = CustomShader._viewProjectionValues;
+            }
+            if (CustomShader.viewMatrix && this.uniforms[this._viewMatrixName]) {
+                this.uniforms[this._viewMatrixName].value = CustomShader._viewMatrixValues;
+            }
+            if (this.uniforms[CustomShader._worldSpaceCameraPosName]) {
+                this.uniforms[CustomShader._worldSpaceCameraPosName] = { value: CustomShader._worldSpaceCameraPos };
+            }
+            if (context.mainCameraComponent) {
+                if (this.uniforms["_ProjectionParams"]) {
+                    const params = this.uniforms["_ProjectionParams"].value;
+                    params.x = 1;
+                    params.y = context.mainCameraComponent.nearClipPlane;
+                    params.z = context.mainCameraComponent.farClipPlane;
+                    params.w = 1 / params.z;
+                    this.uniforms["_ProjectionParams"].value = params;
+                }
+                if (this.uniforms["_ZBufferParams"]) {
+                    const params = this.uniforms["_ZBufferParams"].value;
+                    const cam = context.mainCameraComponent;
+                    params.x = 1 - cam.farClipPlane / cam.nearClipPlane;
+                    params.y = cam.farClipPlane / cam.nearClipPlane;
+                    params.z = params.x / cam.farClipPlane;
+                    params.w = params.y / cam.farClipPlane;
+                    this.uniforms["_ZBufferParams"].value = params;
+                }
+                if (this.uniforms["_ScreenParams"]) {
+                    const params = this.uniforms["_ScreenParams"].value;
+                    params.x = context.domWidth;
+                    params.y = context.domHeight;
+                    params.z = 1.0 + 1.0 / params.x;
+                    params.w = 1.0 + 1.0 / params.y;
+                    this.uniforms["_ScreenParams"].value = params;
+                }
+                if (this.uniforms["_ScaledScreenParams"]) {
+                    const params = this.uniforms["_ScaledScreenParams"].value;
+                    params.x = context.domWidth;
+                    params.y = context.domHeight;
+                    params.z = 1.0 + 1.0 / params.x;
+                    params.w = 1.0 + 1.0 / params.y;
+                    this.uniforms["_ScaledScreenParams"].value = params;
+                }
+            }
+        }
+        const depthTexture = this.depthTextureUniform;
+        if (depthTexture) {
+            depthTexture.value = context.depthTexture;
+        }
+        const colorTexture = this.opaqueTextureUniform;
+        if (colorTexture) {
+            colorTexture.value = context.opaqueColorTexture;
+        }
+        if (obj) {
+            const objData = this._rendererData;
+            objData.updateFrom(obj);
+            this.uniforms[this._worldToObjectName].value = objData.worldToObject;
+            this.uniforms[this._objToWorldName].value = objData.objectToWorld;
+        }
+        this.uniformsNeedUpdate = true;
+    }
+}
+export class NEEDLE_techniques_webgl {
+    get name() {
+        return NEEDLE_TECHNIQUES_WEBGL_NAME;
+    }
+    parser;
+    identifier;
+    constructor(loader, identifier) {
+        this.parser = loader;
+        this.identifier = identifier;
+    }
+    loadMaterial(index) {
+        const mat = this.parser.json.materials[index];
+        if (!mat) {
+            if (debug)
+                console.log(index, this.parser.json.materials);
+            return null;
+        }
+        if (!mat.extensions || !mat.extensions[NEEDLE_TECHNIQUES_WEBGL_NAME]) {
+            if (debug)
+                console.log(`Material ${index} does not use NEEDLE_techniques_webgl`);
+            return null;
+        }
+        if (debug)
+            console.log(`Material ${index} uses NEEDLE_techniques_webgl`, mat);
+        const techniqueIndex = mat.extensions[NEEDLE_TECHNIQUES_WEBGL_NAME].technique;
+        if (techniqueIndex < 0) {
+            console.debug(`Material ${index} does not have a valid technique index`);
+            return null;
+        }
+        const shaders = this.parser.json.extensions[NEEDLE_TECHNIQUES_WEBGL_NAME];
+        if (!shaders) {
+            if (debug)
+                console.error("Missing shader data", this.parser.json.extensions);
+            else
+                console.debug("Missing custom shader data in parser.json.extensions");
+            return null;
+        }
+        if (debug)
+            console.log(shaders);
+        const technique = shaders.techniques[techniqueIndex];
+        if (!technique)
+            return null;
+        return new Promise(async (resolve, reject) => {
+            const bundle = await FindShaderTechniques(shaders, technique.program);
+            const frag = bundle?.fragmentShader;
+            const vert = bundle?.vertexShader;
+            // console.log(techniqueIndex, shaders.techniques);
+            if (!frag || !vert)
+                return reject();
+            if (debug)
+                console.log("loadMaterial", mat, bundle);
+            const uniforms = {};
+            const techniqueUniforms = technique.uniforms;
+            // BiRP time uniforms
+            if (vert.includes("_Time") || frag.includes("_Time"))
+                uniforms["_Time"] = { value: new Vector4(0, 0, 0, 0) };
+            if (vert.includes("_SinTime") || frag.includes("_SinTime"))
+                uniforms["_SinTime"] = { value: new Vector4(0, 0, 0, 0) };
+            if (vert.includes("_CosTime") || frag.includes("_CosTime"))
+                uniforms["_CosTime"] = { value: new Vector4(0, 0, 0, 0) };
+            if (vert.includes("unity_DeltaTime") || frag.includes("unity_DeltaTime"))
+                uniforms["unity_DeltaTime"] = { value: new Vector4(0, 0, 0, 0) };
+            for (const u in techniqueUniforms) {
+                const uniformName = u;
+                // const uniformValues = techniqueUniforms[u];
+                // const typeName = UniformType[uniformValues.type];
+                switch (uniformName) {
+                    case "_TimeParameters":
+                        const timeUniform = new Vector4();
+                        uniforms[uniformName] = { value: timeUniform };
+                        break;
+                    case "hlslcc_mtx4x4unity_MatrixV":
+                    case "hlslcc_mtx4x4unity_MatrixVP":
+                        uniforms[uniformName] = { value: [] };
+                        break;
+                    case "_MainLightPosition":
+                    case "_MainLightColor":
+                    case "_WorldSpaceCameraPos":
+                        uniforms[uniformName] = { value: [0, 0, 0, 1] };
+                        break;
+                    case "unity_OrthoParams":
+                        break;
+                    case "unity_SpecCube0":
+                        uniforms[uniformName] = { value: null };
+                        break;
+                    default:
+                    case "_ScreenParams":
+                    case "_ZBufferParams":
+                    case "_ProjectionParams":
+                        uniforms[uniformName] = { value: [0, 0, 0, 0] };
+                        break;
+                    case "_CameraOpaqueTexture":
+                    case "_CameraDepthTexture":
+                        uniforms[uniformName] = { value: null };
+                        break;
+                        // switch (uniformValues.type) {
+                        //     case UniformType.INT:
+                        //         break;
+                        //     case UniformType.FLOAT:
+                        //         break;
+                        //     case UniformType.FLOAT_VEC3:
+                        //         console.log("VEC", uniformName);
+                        //         break;
+                        //     case UniformType.FLOAT_VEC4:
+                        //         console.log("VEC", uniformName);
+                        //         break;
+                        //     case UniformType.SAMPLER_CUBE:
+                        //         console.log("cube", uniformName);
+                        //         break;
+                        //     default:
+                        //         console.log(typeName);
+                        //         break;
+                        // }
+                        break;
+                }
+            }
+            let isTransparent = false;
+            if (mat.extensions && mat.extensions[NEEDLE_TECHNIQUES_WEBGL_NAME]) {
+                const materialExtension = mat.extensions[NEEDLE_TECHNIQUES_WEBGL_NAME];
+                if (materialExtension.technique === techniqueIndex) {
+                    if (debug)
+                        console.log(mat.name, "Material Properties", materialExtension);
+                    for (const key in materialExtension.values) {
+                        const val = materialExtension.values[key];
+                        if (typeof val === "string") {
+                            if (val.startsWith("/textures/")) {
+                                const indexString = val.substring("/textures/".length);
+                                const texIndex = Number.parseInt(indexString);
+                                if (texIndex >= 0) {
+                                    const tex = await this.parser.getDependency("texture", texIndex);
+                                    if (tex instanceof Texture) {
+                                        // TODO: if we clone the texture here then progressive textures won't find it (and at this point there's no LOD userdata assigned yet) so the texture will not be loaded.
+                                        // tex = tex.clone();
+                                        tex.colorSpace = LinearSRGBColorSpace;
+                                        tex.needsUpdate = true;
+                                    }
+                                    uniforms[key] = { value: tex };
+                                    continue;
+                                }
+                            }
+                            switch (key) {
+                                case "alphaMode":
+                                    if (val === "BLEND")
+                                        isTransparent = true;
+                                    continue;
+                            }
+                        }
+                        if (Array.isArray(val) && val.length === 4) {
+                            uniforms[key] = { value: new Vector4(val[0], val[1], val[2], val[3]) };
+                            continue;
+                        }
+                        uniforms[key] = { value: val };
+                    }
+                }
+            }
+            const material = new CustomShader(this.identifier, {
+                name: mat.name ?? "",
+                uniforms: uniforms,
+                vertexShader: vert,
+                fragmentShader: frag,
+                lights: false,
+                // defines: {
+                //     "USE_SHADOWMAP" : true
+                // },
+            });
+            material.glslVersion = GLSL3;
+            material.vertexShader = material.vertexShader.replace("#version 300 es", "");
+            material.fragmentShader = material.fragmentShader.replace("#version 300 es", "");
+            const culling = uniforms["_Cull"]?.value;
+            switch (culling) {
+                case CullMode.Off:
+                    material.side = DoubleSide;
+                    break;
+                case CullMode.Front:
+                    material.side = BackSide;
+                    break;
+                case CullMode.Back:
+                    material.side = FrontSide;
+                    break;
+                default:
+                    material.side = FrontSide;
+                    break;
+            }
+            const zTest = uniforms["_ZTest"]?.value;
+            switch (zTest) {
+                case ZTestMode.Equal:
+                    material.depthTest = true;
+                    material.depthFunc = EqualDepth;
+                    break;
+                case ZTestMode.NotEqual:
+                    material.depthTest = true;
+                    material.depthFunc = NotEqualDepth;
+                    break;
+                case ZTestMode.Less:
+                    material.depthTest = true;
+                    material.depthFunc = LessDepth;
+                    break;
+                case ZTestMode.LEqual:
+                    material.depthTest = true;
+                    material.depthFunc = LessEqualDepth;
+                    break;
+                case ZTestMode.Greater:
+                    material.depthTest = true;
+                    material.depthFunc = GreaterDepth;
+                    break;
+                case ZTestMode.GEqual:
+                    material.depthTest = true;
+                    material.depthFunc = GreaterEqualDepth;
+                    break;
+                case ZTestMode.Always:
+                    material.depthTest = false;
+                    material.depthFunc = AlwaysDepth;
+                    break;
+            }
+            material.transparent = isTransparent;
+            if (isTransparent)
+                material.depthWrite = false;
+            // set spherical harmonics once
+            SetUnitySphericalHarmonics(uniforms);
+            // update once to test if everything is assigned
+            material.onUpdateUniforms();
+            for (const u in techniqueUniforms) {
+                const uniformName = u;
+                const type = techniqueUniforms[u].type;
+                if (uniforms[uniformName]?.value === undefined) {
+                    switch (type) {
+                        case SHADERDATA.UniformType.SAMPLER_2D:
+                            uniforms[uniformName] = { value: whiteDefaultTexture };
+                            console.warn("Missing/unassigned texture, fallback to white: " + uniformName);
+                            break;
+                        default:
+                            if (uniformName === "unity_OrthoParams") {
+                            }
+                            else
+                                console.warn("TODO: EXPECTED UNIFORM / fallback NOT SET: " + uniformName, techniqueUniforms[u]);
+                            break;
+                    }
+                }
+            }
+            if (debug)
+                console.log(material.uuid, uniforms);
+            createUniformProperties(material);
+            resolve(material);
+        });
+    }
+}
+// when animating custom material properties (uniforms) the path resolver tries to access them via material._MyProperty. 
+// That doesnt exist by default for custom properties
+// We could re-write the path in the khr path resolver but that would require it to know beforehand
+// if the material uses as custom shader or not
+// this way all properties of custom shaders are also accessible via material._MyProperty
+function createUniformProperties(material) {
+    if (material.uniforms) {
+        if (debug)
+            console.log("Uniforms:", material.uniforms);
+        for (const key in material.uniforms) {
+            defineProperty(key, key);
+            // see NE-3396
+            switch (key) {
+                case "_Color":
+                    defineProperty("color", key);
+                    break;
+                // case "_Metallic":
+                //     defineProperty("metalness", key);
+                //     break;
+            }
+        }
+    }
+    function defineProperty(key, uniformsKey) {
+        if (!Object.getOwnPropertyDescriptor(material, key)) {
+            Object.defineProperty(material, key, {
+                get: () => material.uniforms[uniformsKey].value,
+                set: (value) => {
+                    material.uniforms[uniformsKey].value = value;
+                    material.needsUpdate = true;
+                }
+            });
+        }
+    }
+}
+//# sourceMappingURL=NEEDLE_techniques_webgl.js.map

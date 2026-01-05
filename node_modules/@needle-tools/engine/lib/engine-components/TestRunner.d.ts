@@ -1,0 +1,16 @@
+import { Behaviour } from "./Component.js";
+/** The TestRunner component is used to run tests when the scene starts
+ *  @internal */
+export declare class TestRunner extends Behaviour {
+    awake(): void;
+}
+/** @internal */
+export declare class TestSimulateUserData extends Behaviour {
+    transformsPerFrame: number;
+    interval: number;
+    useFlatbuffers: boolean;
+    awake(): void;
+    private builder;
+    private models;
+    update(): void;
+}

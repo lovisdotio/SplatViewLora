@@ -1,0 +1,10 @@
+import { Object3D } from "three";
+import type { IUSDExporterExtension } from "../../Extension.js";
+import { USDObject, USDZExporterContext } from "../../ThreeUSDZExporter.js";
+export declare class AudioExtension implements IUSDExporterExtension {
+    static getName(clip: string): string;
+    get extensionName(): string;
+    private files;
+    onExportObject?(object: Object3D, model: USDObject, _context: USDZExporterContext): void;
+    onAfterSerialize(context: USDZExporterContext): Promise<void>;
+}

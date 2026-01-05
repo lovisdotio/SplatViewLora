@@ -1,0 +1,29 @@
+import { Object3D } from "three";
+import { Context } from "../../engine/engine_setup.js";
+import { Behaviour } from "../Component.js";
+import { AvatarMarker } from "../webxr/WebXRAvatar.js";
+/** @internal */
+export declare class Avatar_POI {
+    static Pois: {
+        obj: Object3D;
+        avatar: AvatarMarker | null;
+    }[];
+    static LastChangeTime: number;
+    static Add(context: Context, obj: Object3D, ignoredBy?: AvatarMarker | null): void;
+    static Remove(context: Context | null, obj: Object3D | null): void;
+}
+/** @internal */
+export declare class Avatar_Brain_LookAt extends Behaviour {
+    set controlledTarget(target: Object3D);
+    private target;
+    private avatar;
+    private _model;
+    private _targetModel;
+    private _currentTargetObject;
+    private _lastUpdateTime;
+    private _lookDuration;
+    private _lastPoiChangedTime;
+    awake(): void;
+    update(): void;
+    private selectTarget;
+}

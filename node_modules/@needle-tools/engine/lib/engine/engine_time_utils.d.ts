@@ -1,0 +1,88 @@
+/** Gets the date formatted as 20240220-161993. When no Date is passed in, the current local date is used. */
+export declare function getFormattedDate(date?: Date): string;
+declare type ProgressOptions = {
+    message?: string;
+    progress?: number;
+    autoStep?: boolean | number;
+    currentStep?: number;
+    totalSteps?: number;
+};
+declare type ProgressStartOptions = {
+    /** This progress scope will be nested below parentScope */
+    parentScope?: string;
+    /** Callback with progress in 0..1 range. */
+    onProgress?: (progress: number) => void;
+    /** Log timings using console.time() and console.timeLog(). */
+    logTimings?: boolean;
+};
+/** Progress reporting utility.
+ * See `Progress.start` for usage examples.
+ */
+export declare class Progress {
+    /** Start a new progress reporting scope. Make sure to close it with Progress.end.
+     * @param scope The scope to start progress reporting for.
+     * @param options Parent scope, onProgress callback and logging. If only a string is provided, it's used as parentScope.
+     * @example
+     * // Manual usage:
+     * Progress.start("export-usdz", undefined, (progress) => console.log("Progress: " + progress));
+     * Progress.report("export-usdz", { message: "Exporting object 1", currentStep: 1, totalSteps: 3 });
+     * Progress.report("export-usdz", { message: "Exporting object 2", currentStep: 2, totalSteps: 3 });
+     * Progress.report("export-usdz", { message: "Exporting object 3", currentStep: 3, totalSteps: 3 });
+     *
+     * // Auto step usage:
+     * Progress.start("export-usdz", undefined, (progress) => console.log("Progress: " + progress));
+     * Progress.report("export-usdz", { message: "Exporting objects", autoStep: true, totalSteps: 3 });
+     * Progress.report("export-usdz", "Exporting object 1");
+     * Progress.report("export-usdz", "Exporting object 2");
+     * Progress.report("export-usdz", "Exporting object 3");
+     * Progress.end("export-usdz");
+     *
+     * // Auto step with weights:
+     * Progress.start("export-usdz", undefined, (progress) => console.log("Progress: " + progress));
+     * Progress.report("export-usdz", { message: "Exporting objects", autoStep: true, totalSteps: 10 });
+     * Progress.report("export-usdz", { message: "Exporting object 1", autoStep: 8 }); // will advance to 80% progress
+     * Progress.report("export-usdz", "Exporting object 2"); // 90%
+     * Progress.report("export-usdz", "Exporting object 3"); // 100%
+     *
+     * // Child scopes:
+     * Progress.start("export-usdz", undefined, (progress) => console.log("Progress: " + progress));
+     * Progress.report("export-usdz", { message: "Overall export", autoStep: true, totalSteps: 2 });
+     * Progress.start("export-usdz-objects", "export-usdz");
+     * Progress.report("export-usdz-objects", { message: "Exporting objects", autoStep: true, totalSteps: 3 });
+     * Progress.report("export-usdz-objects", "Exporting object 1");
+     * Progress.report("export-usdz-objects", "Exporting object 2");
+     * Progress.report("export-usdz-objects", "Exporting object 3");
+     * Progress.end("export-usdz-objects");
+     * Progress.report("export-usdz", "Exporting materials");
+     * Progress.end("export-usdz");
+     *
+     * // Enable console logging:
+     * Progress.start("export-usdz", { logTimings: true });
+     */
+    static start(scope: string, options?: ProgressStartOptions | string): void;
+    /** Report progress for a formerly started scope.
+     * @param scope The scope to report progress for.
+     * @param options Options for the progress report. If a string is passed, it will be used as the message.
+     * @example
+     * // auto step and show a message
+     * Progress.report("export-usdz", "Exporting object 1");
+     * // same as above
+     * Progress.report("export-usdz", { message: "Exporting object 1", autoStep: true });
+     * // show the current step and total steps and implicitly calculate progress as 10%
+     * Progress.report("export-usdz", { currentStep: 1, totalSteps: 10 });
+     * // enable auto step mode, following calls that have autoStep true will increase currentStep automatically.
+     * Progress.report("export-usdz", { totalSteps: 20, autoStep: true });
+     * // show the progress as 50%
+     * Progress.report("export-usdz", { progress: 0.5 });
+     * // give this step a weight of 20, which changes how progress is calculated. Useful for steps that take longer and/or have child scopes.
+     * Progress.report("export-usdz", { message. "Long process", autoStep: 20 });
+     * // show the current step and total steps and implicitly calculate progress as 10%
+     * Progress.report("export-usdz", { currentStep: 1, totalSteps: 10 });
+     */
+    static report(scope: string, options?: ProgressOptions | string): void;
+    /** End a formerly started scope. This will also report the progress as 100%.
+     * @remarks Will warn if any child scope is still running (progress < 1).
+    */
+    static end(scope: string): void;
+}
+export {};

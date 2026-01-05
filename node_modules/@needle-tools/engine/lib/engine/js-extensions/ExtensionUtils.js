@@ -1,0 +1,68 @@
+const handlers = new Map();
+/** @internal */
+export function applyPrototypeExtensions(obj, prototype) {
+    if (!obj)
+        return;
+    // const prototype = Object.getPrototypeOf(obj);
+    // console.log("TEST", prototype)
+    if (!prototype) {
+        console.warn("No prototype found", obj, obj.prototype, obj.constructor);
+        return;
+    }
+    const handler = handlers.get(prototype);
+    if (handler) {
+        // console.log("OK", prototype);
+        handler.apply(obj);
+    }
+    // applyPrototypeExtensions(prototype);
+}
+/** @internal */
+export function registerPrototypeExtensions(type) {
+    // console.log("Register", type.prototype.constructor.name);
+    const handler = createPrototypeExtensionHandler(type.prototype);
+    handlers.set(type, handler);
+}
+function createPrototypeExtensionHandler(prototype) {
+    return new ApplyPrototypeExtension(prototype);
+}
+class ApplyPrototypeExtension {
+    $symbol;
+    extensions;
+    descriptors;
+    constructor(prototype) {
+        this.$symbol = Symbol("prototype-extension");
+        // used to decorate cloned object3D objects with the same added components defined above
+        this.extensions = Object.keys(prototype);
+        // console.log(this.extensions);
+        this.descriptors = new Array();
+        for (let i = 0; i < this.extensions.length; i++) {
+            const key = this.extensions[i];
+            // console.log(key);
+            const descriptor = Object.getOwnPropertyDescriptor(prototype, key);
+            if (descriptor) {
+                this.descriptors.push(descriptor);
+            }
+        }
+    }
+    apply(object) {
+        if (object[this.$symbol])
+            return;
+        object[this.$symbol] = true;
+        // const prototype = object.constructor.prototype;
+        for (let i = 0; i < this.extensions.length; i++) {
+            const key = this.extensions[i];
+            const desc = this.descriptors[i];
+            if (desc) {
+                // if (prototype) {
+                //     const exists = Object.getOwnPropertyDescriptor(prototype, key);
+                //     if (exists) {
+                //         continue;
+                //     }
+                // }
+                // console.warn("DEFINE", object, key);
+                Object.defineProperty(object, key, desc);
+            }
+        }
+    }
+}
+//# sourceMappingURL=ExtensionUtils.js.map

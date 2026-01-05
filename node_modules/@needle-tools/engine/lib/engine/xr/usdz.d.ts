@@ -1,0 +1,12 @@
+declare type USDZExporter = {
+    exportAndOpen(): Promise<any>;
+};
+/**
+ * Internal registry for USDZ exporters. This is used by NeedleXRSession.start("immersive-ar")
+ */
+export declare namespace InternalUSDZRegistry {
+    function exportAndOpen(): boolean;
+    function registerExporter(exporter: USDZExporter): void;
+    function unregisterExporter(exporter: USDZExporter): void;
+}
+export {};

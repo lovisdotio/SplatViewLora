@@ -1,0 +1,12 @@
+export type RandomFn = () => number;
+export declare class SimplexNoise {
+    private p;
+    private perm;
+    private permMod12;
+    constructor(randomOrSeed?: RandomFn | string | number);
+    noise2D(x: number, y: number): number;
+    noise3D(x: number, y: number, z: number): number;
+    noise4D(x: number, y: number, z: number, w: number): number;
+}
+export default SimplexNoise;
+export declare function buildPermutationTable(random: RandomFn): Uint8Array;

@@ -1,0 +1,11 @@
+import { Object3D } from "three";
+import { AssetReference } from "../engine_addressables.js";
+import type { SourceIdentifier } from "../engine_types.js";
+export declare class NeedleXRUtils {
+    /** Searches the hierarchy for objects following a specific naming scheme */
+    static tryFindAvatarObjects(obj: Object3D, sourceId: SourceIdentifier, result: {
+        head?: AssetReference;
+        leftHand?: AssetReference;
+        rightHand?: AssetReference;
+    }): void;
+}

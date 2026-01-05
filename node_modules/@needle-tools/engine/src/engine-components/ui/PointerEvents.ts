@@ -1,0 +1,207 @@
+import { type Face, Intersection,Object3D, Vector3 } from "three";
+
+import { Input, type InputEventNames, NEPointerEvent } from "../../engine/engine_input.js";
+import type { GamepadButtonName, MouseButtonName } from "../../engine/engine_types.js";
+import { GameObject } from "../Component.js";
+
+export interface IInputEventArgs {
+    get used(): boolean;
+    use(): void;
+    stopImmediatePropagation?(): void;
+}
+
+/** This pointer event data object is passed to all event receivers that are currently active  
+ * It contains hit information if an object was hovered or clicked  
+ * If the event is received in onPointerDown or onPointerMove, you can call `setPointerCapture` to receive onPointerMove events even when the pointer has left the object until you call `releasePointerCapture` or when the pointerUp event happens  
+ * You can get additional information about the event or event source via the `event` property (of type `NEPointerEvent`)
+ */
+export class PointerEventData implements IInputEventArgs {
+
+    /** the original event */
+    readonly event: NEPointerEvent;
+
+    /** the index of the used device   
+     * mouse and touch are always 0, controller is the gamepad index or XRController index
+    */
+    get deviceIndex() { return this.event.deviceIndex; }
+
+    /** a combination of the pointerId + button to uniquely identify the exact input (e.g. LeftController:Button0 = 0, RightController:Button1 = 101) */
+    get pointerId() { return this.event.pointerId; }
+
+    /** 
+     * mouse button 0 === LEFT, 1 === MIDDLE, 2 === RIGHT 
+     * */
+    readonly button: number;
+    readonly buttonName: MouseButtonName | GamepadButtonName | undefined;
+    get pressure(): number { return this.event.pressure; }
+
+    /** @returns `true` when `use()` has been called. Default: false */
+    get used(): boolean {
+        return this._used;
+    }
+    private _used: boolean = false;
+    /** mark this event to be used */
+    use() {
+        if (this._used) return;
+        this._used = true;
+        this.event.use();
+    }
+
+    private _propagationStopped: boolean = false;
+    get propagationStopped() {
+        return this._propagationStopped;
+    }
+
+    /** Call this method to stop immediate propagation on the `event` object.   
+     * WARNING: this is currently equivalent to stopImmediatePropagation   
+     */
+    stopPropagation() {
+        // we currently don't have a distinction between stopPropagation and stopImmediatePropagation  
+        this._propagationStopped = true;
+        this.event.stopImmediatePropagation();
+    }
+    /** Call this method to stop immediate propagation on the `event` object.   
+     */
+    stopImmediatePropagation() {
+        this._propagationStopped = true;
+        this.event.stopImmediatePropagation();
+    }
+
+    /**@ignore internal flag, pointer captured (we dont want to see it in intellisense) */
+    z__pointer_ctured: boolean = false;
+    /** Call this method in `onPointerDown` or `onPointerMove` to receive onPointerMove events for this pointerId even when the pointer has left the object until you call `releasePointerCapture` or when the pointerUp event happens 
+    */
+    setPointerCapture() {
+        this.z__pointer_ctured = true;
+    }
+    /**@ignore internal flag, pointer capture released */
+    z__pointer_cture_rleased: boolean = false;
+    /** call this method in `onPointerDown` or `onPointerMove` to stop receiving onPointerMove events */
+    releasePointerCapture() {
+        this.z__pointer_cture_rleased = true;
+    }
+
+
+    /** Who initiated this event */
+    inputSource: Input | any;
+
+    /** Returns the input target ray mode e.g. "screen" for 2D mouse and touch events */
+    get mode(): XRTargetRayMode | "transient-pointer" { return this.event.mode; }
+
+    /** The object this event hit or interacted with */
+    object!: Object3D;
+    /** The world position of this event */
+    point?: Vector3;
+    /** The object-space normal of this event */
+    normal?: Vector3;
+    /** */
+    face?: Face | null;
+    /** The distance of the hit point from the origin */
+    distance?: number;
+    /** The instance ID of an object hit by a raycast (if a instanced object was hit) */
+    instanceId?: number;
+    /** The three intersection */
+    intersection?: Intersection;
+
+    isDown: boolean | undefined;
+    isUp: boolean | undefined;
+    isPressed: boolean | undefined;
+    isClick: boolean | undefined;
+    isDoubleClick: boolean | undefined;
+
+
+    private input: Input;
+
+    constructor(input: Input, event: NEPointerEvent) {
+        this.event = event;
+        this.input = input;
+        this.button = event.button;
+    }
+
+    clone() {
+        const clone = new PointerEventData(this.input, this.event);
+        Object.assign(clone, this);
+        return clone;
+    }
+
+    /**@deprecated use use() */
+    Use() {
+        this.use();
+    }
+
+    /**@deprecated use stopPropagation() */
+    StopPropagation() {
+        this.event.stopImmediatePropagation();
+    }
+}
+
+export interface IPointerDownHandler {
+    /** Called when a button is started to being pressed on an object (or a child object) */
+    onPointerDown?(args: PointerEventData);
+}
+
+export interface IPointerUpHandler {
+    /** Called when a button is released (which was previously pressed in `onPointerDown`) */
+    onPointerUp?(args: PointerEventData);
+}
+
+export interface IPointerEnterHandler {
+    /** Called when a pointer (mouse, touch, xr controller) starts pointing on/hovering an object (or a child object) */
+    onPointerEnter?(args: PointerEventData);
+}
+
+export interface IPointerMoveHandler {
+    /** Called when a pointer (mouse, touch, xr controller) is moving over an object (or a child object) */
+    onPointerMove?(args: PointerEventData);
+}
+
+export interface IPointerExitHandler {
+    /** Called when a pointer (mouse, touch, xr controller) exists an object (it was hovering the object before but now it's not anymore) */
+    onPointerExit?(args: PointerEventData);
+}
+
+export interface IPointerClickHandler {
+    /** Called when an object (or any child object) is clicked (needs a EventSystem in the scene) */
+    onPointerClick?(args: PointerEventData);
+}
+
+/** Implement on your component to receive input events via the `EventSystem` component */
+export interface IPointerEventHandler extends IPointerDownHandler,
+    IPointerUpHandler, IPointerEnterHandler, IPointerMoveHandler, IPointerExitHandler, IPointerClickHandler { }
+
+
+
+/**
+ * @internal tests if the object has any PointerEventComponent used by the EventSystem
+ * This is used to skip raycasting on objects that have no components that use pointer events
+ */
+export function hasPointerEventComponent(obj: Object3D, event?: InputEventNames | null) {
+    const res = GameObject.foreachComponent(obj, comp => {
+        // ignore disabled components
+        if (!comp.enabled) return undefined;
+
+        const handler = comp as IPointerEventHandler;
+        // if a specific event is passed in, we only check for that event
+        if (event) {
+            switch (event) {
+                case "pointerdown":
+                    if (handler.onPointerDown) return true;
+                    break;
+                case "pointerup":
+                    if (handler.onPointerUp || handler.onPointerClick) return true;
+                    break;
+                case "pointermove":
+                    if (handler.onPointerEnter || handler.onPointerExit || handler.onPointerMove) return true;
+                    break;
+            }
+        }
+        else {
+            if (handler.onPointerDown || handler.onPointerUp || handler.onPointerEnter || handler.onPointerExit || handler.onPointerClick)
+                return true;
+        }
+        // undefined means continue
+        return undefined;
+    }, false);
+    if (res === true) return true;
+    return false;
+}

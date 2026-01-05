@@ -1,0 +1,7 @@
+export class DocumentExtension {
+    get extensionName() {
+        return "DocumentExtension";
+    }
+    onAfterBuildDocument(_context) { }
+}
+//# sourceMappingURL=DocumentExtension.js.map

@@ -1,0 +1,37 @@
+import * as flatbuffers from 'flatbuffers';
+import { Vec3 } from './vec3.js';
+import { Vec4 } from './vec4.js';
+export declare class VrUserStateBuffer {
+    bb: flatbuffers.ByteBuffer | null;
+    bb_pos: number;
+    __init(i: number, bb: flatbuffers.ByteBuffer): VrUserStateBuffer;
+    static getRootAsVrUserStateBuffer(bb: flatbuffers.ByteBuffer, obj?: VrUserStateBuffer): VrUserStateBuffer;
+    static getSizePrefixedRootAsVrUserStateBuffer(bb: flatbuffers.ByteBuffer, obj?: VrUserStateBuffer): VrUserStateBuffer;
+    time(): flatbuffers.Long;
+    avatarId(): string | null;
+    avatarId(optionalEncoding: flatbuffers.Encoding): string | Uint8Array | null;
+    position(obj?: Vec3): Vec3 | null;
+    rotation(obj?: Vec4): Vec4 | null;
+    scale(): number;
+    headPosition(obj?: Vec3): Vec3 | null;
+    headRotation(obj?: Vec4): Vec4 | null;
+    posLeftHand(obj?: Vec3): Vec3 | null;
+    posRightHand(obj?: Vec3): Vec3 | null;
+    rotLeftHand(obj?: Vec4): Vec4 | null;
+    rotRightHand(obj?: Vec4): Vec4 | null;
+    static startVrUserStateBuffer(builder: flatbuffers.Builder): void;
+    static addTime(builder: flatbuffers.Builder, time: flatbuffers.Long): void;
+    static addAvatarId(builder: flatbuffers.Builder, avatarIdOffset: flatbuffers.Offset): void;
+    static addPosition(builder: flatbuffers.Builder, positionOffset: flatbuffers.Offset): void;
+    static addRotation(builder: flatbuffers.Builder, rotationOffset: flatbuffers.Offset): void;
+    static addScale(builder: flatbuffers.Builder, scale: number): void;
+    static addHeadPosition(builder: flatbuffers.Builder, headPositionOffset: flatbuffers.Offset): void;
+    static addHeadRotation(builder: flatbuffers.Builder, headRotationOffset: flatbuffers.Offset): void;
+    static addPosLeftHand(builder: flatbuffers.Builder, posLeftHandOffset: flatbuffers.Offset): void;
+    static addPosRightHand(builder: flatbuffers.Builder, posRightHandOffset: flatbuffers.Offset): void;
+    static addRotLeftHand(builder: flatbuffers.Builder, rotLeftHandOffset: flatbuffers.Offset): void;
+    static addRotRightHand(builder: flatbuffers.Builder, rotRightHandOffset: flatbuffers.Offset): void;
+    static endVrUserStateBuffer(builder: flatbuffers.Builder): flatbuffers.Offset;
+    static finishVrUserStateBufferBuffer(builder: flatbuffers.Builder, offset: flatbuffers.Offset): void;
+    static finishSizePrefixedVrUserStateBufferBuffer(builder: flatbuffers.Builder, offset: flatbuffers.Offset): void;
+}

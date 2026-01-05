@@ -1,0 +1,18 @@
+import { type GLTF, type GLTFLoaderPlugin, GLTFParser } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { type ILightDataRegistry } from "../engine_lightdata.js";
+import { type SourceIdentifier } from "../engine_types.js";
+export declare const EXTENSION_NAME = "NEEDLE_lightmaps";
+export declare enum LightmapType {
+    Lightmap = 0,
+    Skybox = 1,
+    Reflection = 2
+}
+export declare class NEEDLE_lightmaps implements GLTFLoaderPlugin {
+    get name(): string;
+    private parser;
+    private registry;
+    private source;
+    constructor(parser: GLTFParser, reg: ILightDataRegistry, source: SourceIdentifier);
+    afterRoot(_result: GLTF): Promise<void> | null;
+    private resolveTexture;
+}

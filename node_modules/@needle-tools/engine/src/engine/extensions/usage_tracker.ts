@@ -1,0 +1,100 @@
+
+import { Mesh, Object3D } from "three";
+import { type GLTF, type GLTFLoaderPlugin, GLTFParser } from "three/examples/jsm/loaders/GLTFLoader.js";
+
+import { getParam } from "../engine_utils.js";
+
+
+const $loadingId = Symbol("gltf-loader-internal-usage-tracker");
+const debug = getParam("debugusers");
+
+export class InternalUsageTrackerPlugin implements GLTFLoaderPlugin {
+
+    get name(): string {
+        return "NEEDLE_internal_usage_tracker";
+    }
+
+    static isLoading(object: object) {
+        return InternalUsageTrackerPlugin._loadingProcesses > 0;
+        return object[$loadingId] !== undefined;
+    }
+    private static _loadingProcesses = 0;
+
+    private readonly parser: GLTFParser;
+    private readonly _getDependency: any;
+    private readonly _loadingId: string;
+    private _loadedObjects: Set<object> = new Set();
+
+    constructor(parser: GLTFParser) {
+        this.parser = parser;
+        this._getDependency = this.parser.getDependency;
+        this._loadingId = Date.now().toString()
+    }
+
+    beforeRoot() {
+        InternalUsageTrackerPlugin._loadingProcesses++;
+        const self = this;
+        // Patch parser get dependency to track all objects that have been loaded or created
+        const getDependency = this._getDependency;
+        this.parser.getDependency = function (type: string, index: number) {
+            const promise = getDependency.call(this, type, index);
+            promise.then((result) => {
+                if (result) {
+                    self._loadedObjects.add(result);
+                    result[$loadingId] = self._loadingId;
+                }
+                return result;
+            });
+            return promise;
+        };
+        return null;
+    }
+
+    afterRoot(_result: GLTF) {
+        InternalUsageTrackerPlugin._loadingProcesses--;
+        // reset original method
+        this.parser.getDependency = this._getDependency;
+
+        // Cleanup usage of objects that have not been used in a scene
+        for (const loaded of this._loadedObjects) {
+            delete loaded[$loadingId];
+
+            if (loaded instanceof Object3D) {
+                if (!loaded.parent) {
+                    if (loaded instanceof Mesh) {
+                        // we need to delay this for other plugins to use the mesh
+                        // TODO: do we even need to do this?
+                        setTimeout(() => {
+                            if (debug) console.warn("> GLTF LOADER: Mesh not used in scene!", loaded);
+                            loaded.material = null;
+                            loaded.geometry = null;
+                        }, 1000)
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+
+
+
+
+    // private readonly _creatingNodeMesh: Map<number, CreateNodeMesh> = new Map();
+
+    // createNodeMesh(_nodeIndex: number): CreateNodeMesh | null {
+    //     // if (!this.parser) return null;
+    //     // let process = this._creatingNodeMesh.get(nodeIndex);
+    //     // if (process) return process;
+
+    //     // process = this.parser.createNodeMesh(nodeIndex)?.then((mesh) => {
+    //     //     console.log("createNodeMesh", nodeIndex, mesh);
+    //     //     return mesh;
+    //     // }) as CreateNodeMesh;
+    //     // this._creatingNodeMesh.set(nodeIndex, process);
+    //     // return process;
+    // }
+
+
+}
+

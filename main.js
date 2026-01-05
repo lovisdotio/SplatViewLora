@@ -230,7 +230,7 @@ plyRotationZ: 0,
    loraDistanceVariations: true, // Enable 3 distance variations (close/medium/wide)
    loraCloseupFactor: 0.6, // Close-up distance multiplier
    loraWideFactor: 1.8, // Wide shot distance multiplier
-   loraElevations: "0, 30, 60",
+   loraElevations: "-30, 0, 30, 60",
    loraAzimuths: "0, 45, 90, 135, 180, 225, 270, 315",
    loraCaptureDelay: 300, // ms between captures
   loraCaptureStatus: "Ready",
@@ -1010,6 +1010,7 @@ const LORA_AZIM_DESC = {
 };
 
  const LORA_ELEV_DESC = {
+   "-30": "low-angle shot",
    0: "eye-level shot",
    30: "elevated shot",
    60: "high-angle shot",
@@ -1036,7 +1037,8 @@ function getLoraElevDesc(elev) {
   if (elev >= 75) return "bird's-eye view";
   if (elev >= 45) return "high-angle shot";
   if (elev >= 15) return "elevated shot";
-  return "eye-level shot";
+  if (elev >= -15) return "eye-level shot";
+  return "low-angle shot";
 }
 
 function updateLoraStatus(status) {

@@ -1,0 +1,19 @@
+import { Object3D, Texture } from 'three';
+import { GLTFExporterPlugin, GLTFWriter } from 'three/examples/jsm/exporters/GLTFExporter.js';
+declare type BeforeWriteArgs = {
+    keep: boolean;
+};
+export declare abstract class BaseWriter implements GLTFExporterPlugin {
+    private readonly writer;
+    constructor(writer: GLTFWriter);
+    writeNode(_node: Object3D): void;
+}
+export declare class GizmoWriter extends BaseWriter {
+    beforeWriteNode(node: Object3D, args: BeforeWriteArgs): void;
+}
+export declare class RenderTextureWriter extends BaseWriter {
+    beforeWriteTexture(texture: Texture, args: BeforeWriteArgs & {
+        newTexture?: Texture;
+    }): void;
+}
+export {};

@@ -1,0 +1,13 @@
+import { type GLTF, type GLTFLoaderPlugin, GLTFParser } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { type SourceIdentifier } from "../engine_types.js";
+import { type IRenderer } from "../engine_types.js";
+export declare class NEEDLE_render_objects implements GLTFLoaderPlugin {
+    get name(): string;
+    private static stencils;
+    static applyStencil(obj?: IRenderer | null): void;
+    private parser;
+    private source;
+    constructor(parser: GLTFParser, source: SourceIdentifier);
+    afterRoot(_result: GLTF): Promise<void> | null;
+}
+export declare const EXTENSION_NAME = "NEEDLE_render_objects";

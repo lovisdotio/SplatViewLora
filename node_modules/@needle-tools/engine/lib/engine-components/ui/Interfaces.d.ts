@@ -1,0 +1,38 @@
+import { type IComponent } from "../../engine/engine_types.js";
+export interface ICanvas extends IComponent {
+    get isCanvas(): boolean;
+    get screenspace(): boolean;
+    registerTransform(rt: IRectTransform): any;
+    unregisterTransform(rt: IRectTransform): any;
+    registerEventReceiver(receiver: ICanvasEventReceiver): any;
+    unregisterEventReceiver(receiver: ICanvasEventReceiver): any;
+}
+export interface ICanvasGroup {
+    get isCanvasGroup(): boolean;
+    blocksRaycasts: boolean;
+    interactable: boolean;
+}
+export interface IHasAlphaFactor {
+    setAlphaFactor(val: number): any;
+}
+export interface IGraphic extends IComponent, IHasAlphaFactor {
+    get isGraphic(): boolean;
+    raycastTarget: boolean;
+}
+export interface IRectTransform extends IComponent {
+    get isDirty(): boolean;
+    markDirty(): any;
+    updateTransform(): any;
+}
+export interface IRectTransformChangedReceiver {
+    onParentRectTransformChanged(comp: IRectTransform): void;
+}
+export interface ILayoutGroup extends IComponent {
+    get isLayoutGroup(): boolean;
+    get isDirty(): boolean;
+    updateLayout(): any;
+}
+export interface ICanvasEventReceiver {
+    /** Called before the canvas is rendering */
+    onBeforeCanvasRender?(canvas: ICanvas): any;
+}

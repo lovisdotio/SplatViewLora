@@ -1,0 +1,204 @@
+import { Matrix4, MeshStandardMaterial } from "three";
+import { GameObject } from "../../../Component.js";
+import { RectTransform } from "../../../ui/RectTransform.js";
+import { Text } from "../../../ui/Text.js";
+import { TextAnchor } from "../../../ui/Text.js";
+import { getMaterialNameForUSD } from "../ThreeUSDZExporter.js";
+export var TextWrapMode;
+(function (TextWrapMode) {
+    TextWrapMode["singleLine"] = "singleLine";
+    TextWrapMode["hardBreaks"] = "hardBreaks";
+    TextWrapMode["flowing"] = "flowing";
+})(TextWrapMode || (TextWrapMode = {}));
+export var HorizontalAlignment;
+(function (HorizontalAlignment) {
+    HorizontalAlignment["left"] = "left";
+    HorizontalAlignment["center"] = "center";
+    HorizontalAlignment["right"] = "right";
+    HorizontalAlignment["justified"] = "justified";
+})(HorizontalAlignment || (HorizontalAlignment = {}));
+export var VerticalAlignment;
+(function (VerticalAlignment) {
+    VerticalAlignment["top"] = "top";
+    VerticalAlignment["middle"] = "middle";
+    VerticalAlignment["lowerMiddle"] = "lowerMiddle";
+    VerticalAlignment["baseline"] = "baseline";
+    VerticalAlignment["bottom"] = "bottom";
+})(VerticalAlignment || (VerticalAlignment = {}));
+export class USDZText {
+    static global_id = 0;
+    static getId() {
+        return this.global_id++;
+    }
+    id;
+    content = "";
+    font = [];
+    pointSize = 144;
+    width;
+    height;
+    depth;
+    wrapMode;
+    horizontalAlignment;
+    verticalAlignment;
+    material;
+    setDepth(depth) {
+        this.depth = depth;
+        return this;
+    }
+    setPointSize(pointSize) {
+        this.pointSize = pointSize;
+        return this;
+    }
+    setHorizontalAlignment(align) {
+        this.horizontalAlignment = align;
+        return this;
+    }
+    setVerticalAlignment(align) {
+        this.verticalAlignment = align;
+        return this;
+    }
+    constructor(id) {
+        this.id = id;
+    }
+    writeTo(_document, writer) {
+        writer.beginBlock(`def Preliminary_Text "${this.id}"`, "(", false);
+        writer.appendLine(`prepend apiSchemas = ["MaterialBindingAPI"]`);
+        writer.closeBlock(")");
+        writer.beginBlock();
+        if (this.content)
+            writer.appendLine(`string content = "${this.content}"`);
+        if (!this.font || this.font.length <= 0) {
+            this.font ||= [];
+            this.font?.push("sans-serif");
+        }
+        const str = this.font.map(s => `"${s}"`).join(", ");
+        writer.appendLine(`string[] font = [ ${str} ]`);
+        writer.appendLine(`double pointSize = ${this.pointSize}`);
+        if (typeof this.width === "number")
+            writer.appendLine(`double width = ${this.width}`);
+        if (typeof this.height === "number")
+            writer.appendLine(`double height = ${this.height}`);
+        if (typeof this.depth === "number")
+            writer.appendLine(`double depth = ${this.depth}`);
+        if (this.wrapMode)
+            writer.appendLine(`token wrapMode = "${this.wrapMode}"`);
+        if (this.horizontalAlignment)
+            writer.appendLine(`token horizontalAlignment = "${this.horizontalAlignment}"`);
+        if (this.verticalAlignment)
+            writer.appendLine(`token verticalAlignment = "${this.verticalAlignment}"`);
+        if (this.material !== undefined) {
+            writer.appendLine(`rel material:binding = </StageRoot/Materials/${getMaterialNameForUSD(this.material)}>`);
+        }
+        writer.closeBlock();
+    }
+}
+export class TextBuilder {
+    static singleLine(str, pointSize, depth) {
+        const text = new USDZText("text_" + USDZText.getId());
+        text.content = str;
+        if (pointSize)
+            text.pointSize = pointSize;
+        if (depth)
+            text.depth = depth;
+        return text;
+    }
+    static multiLine(str, width, height, horizontal, vertical, wrapMode) {
+        const text = new USDZText("text_" + USDZText.getId());
+        text.content = str;
+        text.width = width;
+        text.height = height;
+        text.horizontalAlignment = horizontal;
+        text.verticalAlignment = vertical;
+        if (wrapMode !== undefined)
+            text.wrapMode = wrapMode;
+        return text;
+    }
+}
+const rotateYAxisMatrix = new Matrix4().makeRotationY(Math.PI);
+const invertX = new Matrix4().makeScale(-1, 1, -1);
+export class TextExtension {
+    get extensionName() {
+        return "text";
+    }
+    exportText(object, newModel, _context) {
+        const text = GameObject.getComponent(object, Text);
+        if (!text)
+            return;
+        const rt = GameObject.getComponent(object, RectTransform);
+        let width = 100;
+        let height = 100;
+        if (rt) {
+            width = rt.width;
+            height = rt.height;
+        }
+        const mat = rotateYAxisMatrix.clone();
+        if (rt) // Not ideal but works for now:
+            mat.premultiply(invertX);
+        newModel.setMatrix(mat);
+        const color = text.color.clone();
+        newModel.material = new MeshStandardMaterial({ color: color, emissive: color });
+        newModel.addEventListener("serialize", (writer, _context) => {
+            let txt = text.text;
+            // Some texts use \r\n for newlines, we remove the \r here.
+            // Also encountered a single text ending with \r which broke the output.
+            txt = txt.replace(/\r/g, "");
+            txt = txt.replace(/\n/g, "\\n");
+            const textObj = TextBuilder.multiLine(txt, width, height, HorizontalAlignment.center, VerticalAlignment.bottom, TextWrapMode.flowing);
+            this.setTextAlignment(textObj, text.alignment);
+            this.setOverflow(textObj, text);
+            if (newModel.material)
+                textObj.material = newModel.material;
+            textObj.pointSize = this.convertToTextSize(text.fontSize);
+            textObj.depth = .001;
+            textObj.writeTo(undefined, writer);
+        });
+    }
+    convertToTextSize(pixel) {
+        return 1 / 0.0502 * 144 * pixel;
+    }
+    setOverflow(textObj, text) {
+        if (text.horizontalOverflow) {
+            textObj.wrapMode = TextWrapMode.singleLine;
+        }
+        else {
+            textObj.wrapMode = TextWrapMode.flowing;
+        }
+    }
+    setTextAlignment(text, alignment) {
+        switch (alignment) {
+            case TextAnchor.LowerLeft:
+            case TextAnchor.MiddleLeft:
+            case TextAnchor.UpperLeft:
+                text.horizontalAlignment = HorizontalAlignment.left;
+                break;
+            case TextAnchor.LowerCenter:
+            case TextAnchor.MiddleCenter:
+            case TextAnchor.UpperCenter:
+                text.horizontalAlignment = HorizontalAlignment.center;
+                break;
+            case TextAnchor.LowerRight:
+            case TextAnchor.MiddleRight:
+            case TextAnchor.UpperRight:
+                text.horizontalAlignment = HorizontalAlignment.right;
+                break;
+        }
+        switch (alignment) {
+            case TextAnchor.LowerLeft:
+            case TextAnchor.LowerCenter:
+            case TextAnchor.LowerRight:
+                text.verticalAlignment = VerticalAlignment.bottom;
+                break;
+            case TextAnchor.MiddleLeft:
+            case TextAnchor.MiddleCenter:
+            case TextAnchor.MiddleRight:
+                text.verticalAlignment = VerticalAlignment.middle;
+                break;
+            case TextAnchor.UpperLeft:
+            case TextAnchor.UpperCenter:
+            case TextAnchor.UpperRight:
+                text.verticalAlignment = VerticalAlignment.top;
+                break;
+        }
+    }
+}
+//# sourceMappingURL=USDZText.js.map

@@ -1,0 +1,53 @@
+import { Color, DataTexture, Matrix4, Vector4 } from "three";
+import { RGBAColor } from "./js-extensions/index.js";
+import * as SHADERDATA from "./shaders/shaderData.js";
+export declare const whiteDefaultTexture: DataTexture;
+/**
+ * Creates a new texture with a single color
+ * @param col Color to use
+ * @param size Size of the texture
+ * @returns A texture with the specified color
+ */
+export declare function createFlatTexture(col: RGBAColor | Color, size?: number): DataTexture;
+/**
+ * Creates a new texture with three colors
+ * @param col0 First color
+ * @param col1 Second color
+ * @param col2 Third color
+ * @param width Width of the texture
+ * @param height Height of the texture
+ * @returns A texture with the specified colors
+ */
+export declare function createTrilightTexture<T extends Color>(col0: T, col1: T, col2: T, width?: number, height?: number): DataTexture;
+/** @internal */
+export declare enum Stage {
+    Vertex = 0,
+    Fragment = 1
+}
+/** @internal */
+export declare class UnityShaderStage {
+    stage: Stage;
+    code: string;
+    constructor(stage: Stage, code: string);
+}
+declare class ShaderLib {
+    loaded: Map<string, UnityShaderStage>;
+    loadShader(url: string): Promise<SHADERDATA.ShaderData>;
+    load(stage: Stage, url: string): Promise<UnityShaderStage>;
+}
+/** @internal */
+export declare const lib: ShaderLib;
+/** @internal */
+export declare function ToUnityMatrixArray(mat: Matrix4, buffer?: Array<Vector4>): Array<Vector4>;
+/** @internal */
+export declare function SetUnitySphericalHarmonics(obj: object, array?: number[]): void;
+/** @internal */
+export declare class ShaderBundle {
+    readonly vertexShader: string;
+    readonly fragmentShader: string;
+    readonly technique: SHADERDATA.Technique;
+    constructor(vertexShader: string, fragmentShader: string, technique: SHADERDATA.Technique);
+}
+/** @internal */
+export declare function FindShaderTechniques(shaderData: SHADERDATA.ShaderData, id: number): Promise<ShaderBundle | null>;
+export {};

@@ -1,0 +1,63 @@
+
+import { noVoip } from "../../engine-components/Voip.js";
+import * as utils from "../engine_utils.js";
+
+
+export function detect_run_tests(){
+    const count = (utils.getParam("testwindowcount") || 0) as number;
+    if(count && count > 0){
+        spawnWindows(count);
+    }
+}
+
+export function spawnWindows(count: number): Window[] | null {
+
+    if(utils.getParam("testwindow")) return null;
+
+    const url = new URL(window.location.href);
+    utils.setOrAddParamsToUrl(url.searchParams, noVoip, 1);
+    utils.setOrAddParamsToUrl(url.searchParams, "testwindow", 1);
+    const str = url.toString();
+
+    const windows : Window[] = [];
+
+    window.onbeforeunload = () =>{
+        for(const w of windows) w.close(); 
+    }
+
+    const spacing = .05;
+    const size = 128;// (Math.min(window.innerWidth, window.innerHeight) / Math.sqrt(count)) * (1-spacing);
+    let x = 0;
+    let y = 0;
+    for (let i = 0; i < count; i++) {
+
+        if ((x * size + size*.01) >= window.innerWidth) {
+            y += 1;
+            x = 0;
+        }
+        const px = x * (size * (1+spacing)) + window.screenLeft;
+        const py = y * (size * (1+spacing)) + window.screenTop + 90 + 60 * y; 
+        x += 1;
+
+        // console.log(size, px, py);
+        const testWindow = window.open(str, "test window " + i, `popup=yes width=${size} height=${size} top=${py} left=${px}`);
+
+        if(!testWindow){
+            console.warn("Failed to open window");
+            continue;
+        }
+        windows.push(testWindow);
+        testWindow.onload = () => {
+            testWindow.onbeforeunload = () => {
+                for (let i = 0; i < windows.length; i++) {
+                    const w = windows[i];
+                    if (w === testWindow) continue;
+                    w.close();
+                }
+                windows.length = 0;
+            }
+        }
+    }
+
+    return windows;
+}

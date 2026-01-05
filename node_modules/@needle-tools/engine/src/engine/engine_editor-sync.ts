@@ -1,0 +1,29 @@
+
+
+
+/**
+ * @internal
+ */
+export declare type EditorModification = {
+    guid: string,
+    propertyName: string,
+    value: any
+}
+
+/** Implement to receive callbacks from {@type @needle-tools/editor-sync} package */
+export interface IEditorModification {
+    /**
+     * Called when a modification is made through the external editor (called from @needle-tools/editor-sync)
+     * @param modification The modification that was made in the external editor
+     * @returns false if you want the editor package to apply the modification. Otherwise it's expected that your code handles applying the change
+     */
+    onEditorModification(modification: EditorModification): void | undefined | boolean;
+
+    /** Called immediately after the modification was made through the external editor and applied by the editor-sync package */
+    onAfterEditorModification?(mod: EditorModification): void;
+}
+
+/** @internal */
+export function getEditorModificationCache() {
+    return globalThis["NeedleEditorSync.ModificationCache"] as null | undefined | Map<string, EditorModification>;
+}

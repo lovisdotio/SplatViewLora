@@ -1,0 +1,58 @@
+import { type IComponent } from "../../engine/engine_types.js";
+
+export interface ICanvas extends IComponent {
+    get isCanvas(): boolean;
+    get screenspace(): boolean;
+    registerTransform(rt: IRectTransform);
+    unregisterTransform(rt: IRectTransform);
+    registerEventReceiver(receiver: ICanvasEventReceiver);
+    unregisterEventReceiver(receiver: ICanvasEventReceiver);
+}
+
+export interface ICanvasGroup {
+    get isCanvasGroup(): boolean;
+    blocksRaycasts: boolean;
+    interactable: boolean;
+}
+
+export interface IHasAlphaFactor {
+    setAlphaFactor(val: number);
+}
+
+export interface IGraphic extends IComponent, IHasAlphaFactor {
+    get isGraphic(): boolean;
+    raycastTarget: boolean;
+}
+
+export interface IRectTransform extends IComponent {
+    get isDirty(): boolean;
+    markDirty();
+    updateTransform();
+}
+
+export interface IRectTransformChangedReceiver {
+    onParentRectTransformChanged(comp: IRectTransform): void;
+}
+
+export interface ILayoutGroup extends IComponent {
+    get isLayoutGroup(): boolean;
+    get isDirty(): boolean;
+    updateLayout();
+}
+
+export interface ICanvasEventReceiver {
+    /** Called before the canvas is rendering */
+    onBeforeCanvasRender?(canvas: ICanvas);
+}
+
+// export abstract class LayoutGroup extends Behaviour implements IRectTransformChangedReceiver, ILayoutGroup {
+//     get isLayoutGroup(): boolean {
+//         return true;
+//     }
+//     updateLayout() {
+//         throw new Error("Method not implemented.");
+//     }
+//     onParentRectTransformChanged(comp: IRectTransform): void {
+//         throw new Error("Method not implemented.");
+//     }
+// }

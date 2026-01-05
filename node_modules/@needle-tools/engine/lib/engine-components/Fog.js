@@ -1,0 +1,62 @@
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+import { Color, Fog as Fog3 } from "three";
+import { serializable } from "../engine/engine_serialization.js";
+import { Behaviour } from "./Component.js";
+var FogMode;
+(function (FogMode) {
+    FogMode[FogMode["Linear"] = 1] = "Linear";
+    FogMode[FogMode["Exponential"] = 2] = "Exponential";
+    FogMode[FogMode["ExponentialSquared"] = 3] = "ExponentialSquared";
+})(FogMode || (FogMode = {}));
+/** @internal */
+export class Fog extends Behaviour {
+    get fog() {
+        if (!this._fog)
+            this._fog = new Fog3(0x000000, 0, 50);
+        return this._fog;
+    }
+    get mode() {
+        return FogMode.Linear;
+    }
+    set near(value) {
+        this.fog.near = value;
+    }
+    get near() {
+        return this.fog.near;
+    }
+    set far(value) {
+        this.fog.far = value;
+    }
+    get far() {
+        return this.fog.far;
+    }
+    set color(value) {
+        this.fog.color.copy(value);
+    }
+    get color() {
+        return this.fog.color;
+    }
+    _fog;
+    onEnable() {
+        this.scene.fog = this.fog;
+    }
+    onDisable() {
+        if (this.scene.fog === this._fog)
+            this.scene.fog = null;
+    }
+}
+__decorate([
+    serializable()
+], Fog.prototype, "near", null);
+__decorate([
+    serializable()
+], Fog.prototype, "far", null);
+__decorate([
+    serializable(Color)
+], Fog.prototype, "color", null);
+//# sourceMappingURL=Fog.js.map

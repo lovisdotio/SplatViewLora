@@ -1,0 +1,70 @@
+import { Object3D } from "three";
+
+import { serializable } from "../../engine/engine_serialization_decorator.js";
+import { Behaviour, GameObject } from "../Component.js";
+import { XRFlag } from "../webxr/XRFlag.js";
+
+
+/** @internal */
+export class AvatarBlink_Simple extends Behaviour {
+
+    @serializable(Object3D)
+    private eyes: Object3D[] = [];
+    @serializable()
+    private lastBlinkTime: number = 0;
+    @serializable()
+    private blinkLength: number = 0;
+    @serializable()
+    private eyesOpen: boolean = true;
+
+    private state : XRFlag | null = null;
+
+    awake(){
+        this.state = GameObject.getComponentInParent(this.gameObject, XRFlag);
+        // console.log(this.state, this.activeAndEnabled, this.gameObject);
+    }
+
+    public update() {
+        if (!this.gameObject || !this.gameObject.visible) return;
+        if(!this.eyes || !Array.isArray(this.eyes) || this.eyes.length === 0) return;
+
+        const needsUpdate = this.context.time.time - this.lastBlinkTime > this.blinkLength;
+
+        if (needsUpdate) {
+            this.lastBlinkTime = this.context.time.time;
+
+            // workaround until we propagate active state to all child components
+            if(this.state && !this.state.isOn) return;
+            if(!this.activeAndEnabled) return;
+
+            // console.log(this.state?.isOn, this.activeAndEnabled);
+
+            this.eyesOpen = !this.eyesOpen;
+            this.blinkLength = Math.random();
+            if (!this.eyesOpen) {
+                this.blinkLength *= Math.random() * .2;
+                this.blinkLength += .1;
+            }
+            else {
+                // eyes are open
+                this.blinkLength *= 3;
+                this.blinkLength += .5;
+                if (Math.random() < .1) this.blinkLength = .1 + Math.random() * .2;
+            }
+            if (Math.random() < .1) this.blinkLength *= 3;
+
+            // if(time.time - this.lastMouthChangeTime < .5 && Math.random() > .5){
+            //     this.blinkLength *= 1-(100/this.lastMouthChangeFrequency);
+            // }
+
+            this.blinkLength = Math.max(.2, this.blinkLength);
+            this.blinkLength = Math.min(3, this.blinkLength);
+            if (this.eyes) {
+                for (const eye of this.eyes) {
+                    if (eye)
+                        eye.visible = this.eyesOpen;
+                }
+            }
+        }
+    }
+}

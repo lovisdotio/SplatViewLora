@@ -1,0 +1,35 @@
+import { AssetReference } from "../engine_addressables.js";
+import { getParam } from "../engine_utils.js";
+const debug = getParam("debugwebxr");
+export class NeedleXRUtils {
+    /** Searches the hierarchy for objects following a specific naming scheme */
+    static tryFindAvatarObjects(obj, sourceId, result) {
+        if (result.head && result.leftHand && result.rightHand)
+            return;
+        const name = obj.name.toLocaleLowerCase();
+        if (!result.head && name.includes("head")) {
+            if (debug)
+                console.log("FOUND AVATAR HEAD", obj.name);
+            result.head = new AssetReference("", sourceId, obj);
+        }
+        if (name.includes("hand")) {
+            if (!result.leftHand && name.includes("left")) {
+                if (debug)
+                    console.log("FOUND AVATAR LEFT HAND", obj.name);
+                result.leftHand = new AssetReference("", sourceId, obj);
+            }
+            if (!result.rightHand && name.includes("right")) {
+                if (debug)
+                    console.log("FOUND AVATAR RIGHT HAND", obj.name);
+                result.rightHand = new AssetReference("", sourceId, obj);
+            }
+        }
+        for (let i = 0; i < obj.children.length; i++) {
+            if (result.head && result.leftHand && result.rightHand)
+                return;
+            const child = obj.children[i];
+            this.tryFindAvatarObjects(child, sourceId, result);
+        }
+    }
+}
+//# sourceMappingURL=utils.js.map

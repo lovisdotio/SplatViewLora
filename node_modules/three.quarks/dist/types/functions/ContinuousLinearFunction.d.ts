@@ -1,0 +1,20 @@
+import { FunctionJSON } from './FunctionJSON';
+interface ObjectValueType<T> {
+    copy(value: T): ObjectValueType<T>;
+    lerp(value: T, pos: number): ObjectValueType<T>;
+    clone(): ObjectValueType<T>;
+}
+export declare class ContinuousLinearFunction<T extends ObjectValueType<T> | number> {
+    keys: Array<[T, number]>;
+    type: 'function';
+    subType: 'Number' | 'Vector3' | 'Vector4' | 'Color';
+    constructor(keys: Array<[T, number]>, subType: 'Number' | 'Vector3' | 'Vector4' | 'Color');
+    findKey(t: number): number;
+    getStartX(index: number): number;
+    getEndX(index: number): number;
+    genValue(value: T, t: number): T;
+    toJSON(): FunctionJSON;
+    static fromJSON(json: FunctionJSON): ContinuousLinearFunction<any>;
+    clone(): ContinuousLinearFunction<any>;
+}
+export {};

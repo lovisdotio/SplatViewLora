@@ -1,0 +1,14 @@
+export declare abstract class PiecewiseFunction<T> {
+    functions: Array<[T, number]>;
+    protected constructor();
+    findFunction(t: number): number;
+    getStartX(index: number): number;
+    setStartX(index: number, x: number): void;
+    getEndX(index: number): number;
+    setEndX(index: number, x: number): void;
+    insertFunction(t: number, func: T): void;
+    removeFunction(index: number): T;
+    getFunction(index: number): T;
+    setFunction(index: number, func: T): void;
+    get numOfFunctions(): number;
+}

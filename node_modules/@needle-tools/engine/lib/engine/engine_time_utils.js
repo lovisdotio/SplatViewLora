@@ -1,0 +1,216 @@
+import { getParam } from "./engine_utils.js";
+const showProgressLogs = getParam("debugprogress");
+/** Gets the date formatted as 20240220-161993. When no Date is passed in, the current local date is used. */
+export function getFormattedDate(date) {
+    date = date || new Date();
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    const hour = date.getHours();
+    const min = date.getMinutes();
+    const sec = date.getSeconds();
+    const s_month = (month < 10 ? "0" : "") + month;
+    const s_day = (day < 10 ? "0" : "") + day;
+    const s_hour = (hour < 10 ? "0" : "") + hour;
+    const s_min = (min < 10 ? "0" : "") + min;
+    const s_sec = (sec < 10 ? "0" : "") + sec;
+    return date.getFullYear() + s_month + s_day + "-" + s_hour + s_min + s_sec;
+}
+/** Progress reporting utility.
+ * See `Progress.start` for usage examples.
+ */
+export class Progress {
+    /** Start a new progress reporting scope. Make sure to close it with Progress.end.
+     * @param scope The scope to start progress reporting for.
+     * @param options Parent scope, onProgress callback and logging. If only a string is provided, it's used as parentScope.
+     * @example
+     * // Manual usage:
+     * Progress.start("export-usdz", undefined, (progress) => console.log("Progress: " + progress));
+     * Progress.report("export-usdz", { message: "Exporting object 1", currentStep: 1, totalSteps: 3 });
+     * Progress.report("export-usdz", { message: "Exporting object 2", currentStep: 2, totalSteps: 3 });
+     * Progress.report("export-usdz", { message: "Exporting object 3", currentStep: 3, totalSteps: 3 });
+     *
+     * // Auto step usage:
+     * Progress.start("export-usdz", undefined, (progress) => console.log("Progress: " + progress));
+     * Progress.report("export-usdz", { message: "Exporting objects", autoStep: true, totalSteps: 3 });
+     * Progress.report("export-usdz", "Exporting object 1");
+     * Progress.report("export-usdz", "Exporting object 2");
+     * Progress.report("export-usdz", "Exporting object 3");
+     * Progress.end("export-usdz");
+     *
+     * // Auto step with weights:
+     * Progress.start("export-usdz", undefined, (progress) => console.log("Progress: " + progress));
+     * Progress.report("export-usdz", { message: "Exporting objects", autoStep: true, totalSteps: 10 });
+     * Progress.report("export-usdz", { message: "Exporting object 1", autoStep: 8 }); // will advance to 80% progress
+     * Progress.report("export-usdz", "Exporting object 2"); // 90%
+     * Progress.report("export-usdz", "Exporting object 3"); // 100%
+     *
+     * // Child scopes:
+     * Progress.start("export-usdz", undefined, (progress) => console.log("Progress: " + progress));
+     * Progress.report("export-usdz", { message: "Overall export", autoStep: true, totalSteps: 2 });
+     * Progress.start("export-usdz-objects", "export-usdz");
+     * Progress.report("export-usdz-objects", { message: "Exporting objects", autoStep: true, totalSteps: 3 });
+     * Progress.report("export-usdz-objects", "Exporting object 1");
+     * Progress.report("export-usdz-objects", "Exporting object 2");
+     * Progress.report("export-usdz-objects", "Exporting object 3");
+     * Progress.end("export-usdz-objects");
+     * Progress.report("export-usdz", "Exporting materials");
+     * Progress.end("export-usdz");
+     *
+     * // Enable console logging:
+     * Progress.start("export-usdz", { logTimings: true });
+     */
+    static start(scope, options) {
+        if (typeof options === "string")
+            options = { parentScope: options };
+        const p = new ProgressEntry(scope, options);
+        progressCache.set(scope, p);
+    }
+    /** Report progress for a formerly started scope.
+     * @param scope The scope to report progress for.
+     * @param options Options for the progress report. If a string is passed, it will be used as the message.
+     * @example
+     * // auto step and show a message
+     * Progress.report("export-usdz", "Exporting object 1");
+     * // same as above
+     * Progress.report("export-usdz", { message: "Exporting object 1", autoStep: true });
+     * // show the current step and total steps and implicitly calculate progress as 10%
+     * Progress.report("export-usdz", { currentStep: 1, totalSteps: 10 });
+     * // enable auto step mode, following calls that have autoStep true will increase currentStep automatically.
+     * Progress.report("export-usdz", { totalSteps: 20, autoStep: true });
+     * // show the progress as 50%
+     * Progress.report("export-usdz", { progress: 0.5 });
+     * // give this step a weight of 20, which changes how progress is calculated. Useful for steps that take longer and/or have child scopes.
+     * Progress.report("export-usdz", { message. "Long process", autoStep: 20 });
+     * // show the current step and total steps and implicitly calculate progress as 10%
+     * Progress.report("export-usdz", { currentStep: 1, totalSteps: 10 });
+     */
+    static report(scope, options) {
+        const p = progressCache.get(scope);
+        if (!p) {
+            console.warn("Reporting progress for non-existing scope", scope);
+            return;
+        }
+        if (typeof options === "string")
+            options = { message: options, autoStep: true };
+        p.report(options);
+    }
+    /** End a formerly started scope. This will also report the progress as 100%.
+     * @remarks Will warn if any child scope is still running (progress < 1).
+    */
+    static end(scope) {
+        const p = progressCache.get(scope);
+        if (!p)
+            return;
+        p.end();
+        progressCache.delete(scope);
+    }
+}
+const progressCache = new Map();
+/** Internal class that handles Progress instances and their parent/child relationship. */
+class ProgressEntry {
+    scopeLabel;
+    parentScope;
+    childScopes = [];
+    parentDepth = 0;
+    lastStep = 0;
+    lastAutoStepWeight = 1;
+    lastTotalSteps = 0;
+    onProgress;
+    showLogs = false;
+    selfProgress = 0;
+    totalProgress = 0;
+    selfReports = 0;
+    totalReports = 0;
+    constructor(scope, options) {
+        this.parentScope = options?.parentScope ? progressCache.get(options.parentScope) : undefined;
+        if (this.parentScope) {
+            this.parentScope.childScopes.push(this);
+            this.parentDepth = this.parentScope.parentDepth + 1;
+        }
+        this.scopeLabel = " ".repeat(this.parentDepth * 2) + scope;
+        this.showLogs = options?.logTimings ?? !!showProgressLogs;
+        if (this.showLogs)
+            console.time(this.scopeLabel);
+        this.onProgress = options?.onProgress;
+    }
+    report(options, indirect = false) {
+        if (options) {
+            if (options.totalSteps !== undefined)
+                this.lastTotalSteps = options.totalSteps;
+            if (options.currentStep !== undefined)
+                this.lastStep = options.currentStep;
+            if (options.autoStep !== undefined) {
+                if (options.currentStep === undefined) {
+                    if (this.lastStep === undefined)
+                        this.lastStep = 0;
+                    const stepIncrease = typeof options.autoStep === "number" ? options.autoStep : 1;
+                    this.lastStep += this.lastAutoStepWeight;
+                    this.lastAutoStepWeight = stepIncrease;
+                    options.currentStep = this.lastStep;
+                }
+                options.totalSteps = this.lastTotalSteps;
+            }
+            if (options.progress !== undefined)
+                this.selfProgress = options.progress;
+            else if (options.currentStep !== undefined && options.totalSteps !== undefined) {
+                this.selfProgress = options.currentStep / options.totalSteps;
+            }
+        }
+        if (this.childScopes.length > 0) {
+            let avgChildProgress = 0;
+            let sumChildWeight = 0;
+            for (const c of this.childScopes) {
+                avgChildProgress += c.selfProgress;
+                sumChildWeight += 1;
+            }
+            if (sumChildWeight > 0)
+                avgChildProgress /= sumChildWeight;
+            const stepWeight = this.lastAutoStepWeight / (this.lastTotalSteps ?? 1);
+            // not entirely sure about this formula – idea is that a step should be weighted by the progress of the children
+            this.totalProgress = this.selfProgress + avgChildProgress * stepWeight;
+        }
+        else {
+            this.totalProgress = this.selfProgress;
+        }
+        // sanitize values
+        this.selfProgress = Math.min(1, this.selfProgress);
+        this.totalProgress = Math.min(1, this.totalProgress);
+        let msg = (this.totalProgress * 100).toFixed(3) + "%";
+        if (this.childScopes.length > 0)
+            msg += " (" + (this.selfProgress * 100).toFixed(3) + "% self)";
+        if (options?.message)
+            msg = options.message + " – " + msg;
+        if (this.lastStep !== undefined && this.lastTotalSteps !== undefined)
+            msg = "Step " + (this.lastStep + (this.lastAutoStepWeight != 1 ? "–" + (this.lastStep + this.lastAutoStepWeight) : "") + "/" + this.lastTotalSteps) + " " + msg;
+        if (indirect)
+            this.totalReports++;
+        else {
+            this.selfReports++;
+            this.totalReports++;
+        }
+        if (this.showLogs)
+            console.timeLog(this.scopeLabel, msg);
+        if (this.onProgress)
+            this.onProgress(this.totalProgress);
+        if (this.parentScope)
+            this.parentScope.report(undefined, true);
+    }
+    end() {
+        this.report({ progress: 1, autoStep: true }, true);
+        if (this.showLogs) {
+            console.timeLog(this.scopeLabel, "Total reports: " + this.totalReports, "Self reports: " + this.selfReports);
+            console.timeEnd(this.scopeLabel);
+        }
+        let anyRunningChildProgress = false;
+        for (const c of this.childScopes) {
+            if (c.selfProgress >= 1)
+                continue;
+            anyRunningChildProgress = true;
+            break;
+        }
+        if (anyRunningChildProgress)
+            console.warn("Progress end with child scopes that are still running", this);
+        this.onProgress = undefined;
+    }
+}
+//# sourceMappingURL=engine_time_utils.js.map

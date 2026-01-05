@@ -1,0 +1,2 @@
+export declare function awaitInputAsync(): Promise<void>;
+export declare function awaitInput(cb: any): Promise<void>;

@@ -1,0 +1,4 @@
+export class GenerateMeshBVHWorker {
+    name: string;
+    runTask(worker: any, geometry: any, options?: {}): Promise<any>;
+}

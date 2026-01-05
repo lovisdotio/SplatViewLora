@@ -1,0 +1,16 @@
+import { execSync } from "child_process";
+import { existsSync, mkdirSync } from "fs";
+
+export function ensureNpmDirectoryExists() {
+    try {
+        const cmd = "npm get prefix";
+        const prefix = execSync(cmd).toString().trim();
+        if (prefix?.length && !existsSync(prefix)) {
+            console.log("Creating missing NPM directory at \"" + prefix + "\"");
+            mkdirSync(prefix);
+        }
+    }
+    catch {
+        // ignore
+    }
+}

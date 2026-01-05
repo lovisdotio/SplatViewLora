@@ -1,0 +1,14 @@
+
+
+export function safeInvoke(fun, args) {
+    try {
+        if (args)
+            fun(args);
+        else fun();
+    }
+    catch (err) {
+        console.error(err);
+        return false;
+    }
+    return true;
+}

@@ -1,0 +1,20 @@
+
+
+let exportingStack: number = 0;
+
+/** @internal */
+export function __isExporting(state: boolean) {
+    if (state) {
+        exportingStack++;
+    } else {
+        exportingStack--;
+    }
+}
+
+/**
+ * Returns whether an export process is currently running.
+ * @returns True if an export process is currently running, false otherwise.
+ */
+export function isExporting() {
+    return exportingStack > 0;
+}

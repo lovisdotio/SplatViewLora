@@ -1,0 +1,32 @@
+import path from 'path';
+import { readFileSync, realpathSync, writeFileSync } from 'fs';
+import { execSync } from 'child_process';
+
+/** 
+ * Make sure we dont have vite 4.4.x installed when needle engine is used locally
+ * @param {import('../types').userSettings} userSettings
+ */
+export const vite_4_4_hack = (command, config, userSettings) => {
+    if (userSettings.vite44Hack === false) return;
+    return {
+        name: "needle-vite-4.4-hack",
+        async configureServer(server) {
+            const dir = process.cwd();
+            const packageJsonPath = path.join(dir, "package.json");
+            const currentPackageJson = readFileSync(packageJsonPath, "utf8");
+            if (currentPackageJson.includes('"vite": "^4.3.4"')) {
+                // see https://github.com/vitejs/vite/issues/13736
+                console.log("Detected problematic vite version: Vite 4.4.x does currently have problems with typescript decorators. Switching to 4.3.9...")
+                const newPackageJson = currentPackageJson.replace('"vite": "^4.3.4"', '"vite": "<= 4.3.9"');
+                writeFileSync(packageJsonPath, newPackageJson, "utf8");
+                // stop current server
+                await server.close();
+                // re-install with the limited package version
+                execSync("npm install", { stdio: "inherit", cwd: dir });
+                // start again
+                execSync("npm start", { stdio: "inherit", cwd: dir });
+            }
+
+        },
+    }
+}

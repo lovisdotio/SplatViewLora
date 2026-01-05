@@ -1,0 +1,23 @@
+import { type Constructor } from "./engine_types.js";
+export declare type TypeResolver<T> = (data: any) => Constructor<T> | null;
+/** Please use {@link serializable} - this version has a typo and will be removed in future versions */
+export declare const serializeable: <T>(type?: Constructor<T> | TypeResolver<T> | (Constructor<any> | TypeResolver<T>)[] | null | undefined) => (_target: any, _propertyKey: string | {
+    name: string;
+}) => void;
+/**
+ * The serializable attribute should be used to annotate all serialized fields / fields and members that should be serialized and exposed in an editor
+ * @param type The type of the field. If not provided the type will be inferred from the constructor of the field. If the field is a primitive type (string, number, boolean) the type should be null.
+ */
+export declare const serializable: <T>(type?: Constructor<T> | TypeResolver<T> | (Constructor<any> | TypeResolver<T>)[] | null | undefined) => (_target: any, _propertyKey: string | {
+    name: string;
+}) => void;
+/** @internal */
+export declare const ALL_PROPERTIES_MARKER = "__NEEDLE__ALL_PROPERTIES";
+/** @internal @deprecated current not used */
+export declare function allProperties(constructor: Function): void;
+/**
+ * @internal
+ */
+export declare const STRICT_MARKER = "__NEEDLE__STRICT";
+/** @deprecated  current not used */
+export declare function strict(constructor: Function): void;

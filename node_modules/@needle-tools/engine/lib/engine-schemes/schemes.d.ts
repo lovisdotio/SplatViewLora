@@ -1,0 +1,7 @@
+import * as flatbuffers from "flatbuffers";
+export declare const binaryIdentifierCasts: {
+    [key: string]: (bin: flatbuffers.ByteBuffer) => object;
+};
+export declare function registerBinaryType(identifier: string, cast: (bin: flatbuffers.ByteBuffer) => object): void;
+export declare function tryCastBinary(bin: flatbuffers.ByteBuffer): object;
+export declare function tryGetGuid(obj: any): string | undefined | null;

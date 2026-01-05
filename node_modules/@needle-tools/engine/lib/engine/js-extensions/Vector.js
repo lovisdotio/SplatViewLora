@@ -1,0 +1,14 @@
+import { Vector3 } from "three";
+import { slerp } from "../../engine/engine_three_utils.js";
+import { applyPrototypeExtensions, registerPrototypeExtensions } from "./ExtensionUtils.js";
+/** @internal */
+export function apply(object) {
+    if (object && object.isVector3 === true) {
+        applyPrototypeExtensions(object, Vector3);
+    }
+}
+Vector3.prototype["slerp"] = function (end, t) {
+    return slerp(this, end, t);
+};
+registerPrototypeExtensions(Vector3);
+//# sourceMappingURL=Vector.js.map

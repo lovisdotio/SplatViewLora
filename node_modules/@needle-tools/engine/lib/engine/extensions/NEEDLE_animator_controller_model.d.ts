@@ -1,0 +1,122 @@
+import { AnimationAction, AnimationClip, Object3D } from "three";
+import { InstantiateIdProvider } from "../../engine/engine_networking_instantiate.js";
+import { Animator } from "../../engine-components/Animator.js";
+import { Context } from "../engine_setup.js";
+export declare type AnimatorControllerModel = {
+    name: string;
+    guid: string;
+    parameters: Parameter[];
+    layers: Layer[];
+};
+export declare type Parameter = {
+    name: string;
+    /** the animator string to hash result, test against this if a number is used to get a param value */
+    hash: number;
+    type: AnimatorControllerParameterType;
+    value: number | boolean | string;
+};
+export declare type Layer = {
+    name: string;
+    stateMachine: StateMachine;
+};
+export declare type StateMachine = {
+    defaultState: number;
+    states: State[];
+};
+export declare type State = {
+    name: string;
+    hash: number;
+    motion: Motion;
+    transitions: Transition[];
+    behaviours: StateMachineBehaviourModel[];
+    /** The base speed of the animation */
+    speed?: number;
+    /** Set to a animator controller float parameter name to multiply this ontop of the speed value */
+    speedParameter?: string;
+    /** Cycle offset normalized 0-1, used when starting a animation */
+    cycleOffset?: number;
+    /** If set to a parameter then this is used instead of the CycleOffset value to offset the animation start time */
+    cycleOffsetParameter?: string;
+};
+export declare type StateMachineBehaviourModel = {
+    typeName: string;
+    properties: object;
+    instance?: StateMachineBehaviour;
+};
+export declare abstract class StateMachineBehaviour {
+    _context?: Context;
+    get context(): Context;
+    get isStateMachineBehaviour(): boolean;
+    onStateEnter?(animator: Animator, _animatorStateInfo: AnimatorStateInfo, layerIndex: number): any;
+    onStateUpdate?(animator: Animator, animatorStateInfo: AnimatorStateInfo, _layerIndex: number): any;
+    onStateExit?(animator: Animator, animatorStateInfo: AnimatorStateInfo, layerIndex: number): any;
+}
+export declare class AnimatorStateInfo {
+    /** The name of the animation */
+    readonly name: string;
+    /** The hash of the name */
+    readonly nameHash: number;
+    /** The normalized time of the animation */
+    readonly normalizedTime: number;
+    /** The length of the animation */
+    readonly length: number;
+    /** The current speed of the animation */
+    readonly speed: number;
+    /** The current action playing. It can be used to modify the action */
+    readonly action: AnimationAction | null;
+    /**
+     * If the state has any transitions
+     */
+    readonly hasTransitions: boolean;
+    constructor(state: State, normalizedTime: number, length: number, speed: number);
+}
+export declare type Motion = {
+    name: string;
+    isLooping: boolean;
+    guid?: string;
+    /** clip index in gltf animations array */
+    index?: number;
+    /** the resolved clip */
+    clip?: AnimationClip;
+    /** the clip mapping -> which object has which animationclip */
+    clips?: ClipMapping[];
+    action?: AnimationAction;
+    /** used when a transition points to the same state we need another action to blend */
+    action_loopback?: AnimationAction;
+};
+export declare function createMotion(name: string, id?: InstantiateIdProvider): Motion;
+export declare type ClipMapping = {
+    /** the object this clip is for */
+    node: Object3D;
+    /** the animationclip we resolve from a json ptr */
+    clip: AnimationClip;
+};
+export declare type Transition = {
+    isExit?: boolean;
+    exitTime: number;
+    hasFixedDuration?: boolean;
+    offset: number;
+    duration: number;
+    hasExitTime: number | boolean;
+    destinationState: number | State;
+    conditions: Condition[];
+};
+export declare type Condition = {
+    parameter: string;
+    mode: AnimatorConditionMode;
+    threshold: number;
+};
+export declare enum AnimatorConditionMode {
+    If = 1,
+    IfNot = 2,
+    Greater = 3,
+    Less = 4,
+    Equals = 6,
+    NotEqual = 7
+}
+export declare enum AnimatorControllerParameterType {
+    Float = 1,
+    Int = 3,
+    Bool = 4,
+    Trigger = 9
+}

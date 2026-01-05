@@ -1,0 +1,147 @@
+import { FrameEvent } from "./engine_context.js";
+import { ContextEvent } from "./engine_context_registry.js";
+const newMethods = new Map();
+const allMethods = new Map();
+let methodsWarningCounter = 0;
+/** register a function to be called during the Needle Engine frame event at a specific point
+ * @param cb the function to call
+ * @param evt the event to call the function at
+ */
+export function registerFrameEventCallback(cb, evt, opts) {
+    if (!newMethods.has(evt)) {
+        newMethods.set(evt, new Array());
+    }
+    newMethods.get(evt).push({
+        method: cb,
+        options: { once: false, ...opts }
+    });
+    // Warn if there are too many methods registered
+    if (methodsWarningCounter < 30) {
+        const existing = allMethods.get(evt);
+        if (existing && existing?.length > 100) {
+            methodsWarningCounter += 1;
+            console.warn(`You have ${existing.length} methods registered for Event ${evt}.
+
+This might be a performance issue!
+Consider unregistering the methods when they are not needed anymore!
+
+To unregister you can call the function returned by your event hook (e.g.const unregister = onStart(...)) 
+
+or by using the once option like onStart(()=>{}, { once:true }).
+
+See https://engine.needle.tools/docs/scripting.html#special-lifecycle-hooks for more information.`);
+        }
+    }
+}
+/**
+ * unregister a function to be called during the Needle Engine frame event at a specific point
+ */
+export function unregisterFrameEventCallback(cb, evt) {
+    const methods = allMethods.get(evt);
+    if (methods) {
+        for (let i = 0; i < methods.length; i++) {
+            if (methods[i].method === cb) {
+                methods.splice(i, 1);
+                return;
+            }
+        }
+    }
+    const newMethodsArray = newMethods.get(evt);
+    if (newMethodsArray) {
+        for (let i = 0; i < newMethodsArray.length; i++) {
+            if (newMethodsArray[i].method === cb) {
+                newMethodsArray.splice(i, 1);
+                return;
+            }
+        }
+    }
+}
+export function invokeLifecycleFunctions(ctx, evt) {
+    // When a context is created, we need to reset the started state
+    // Because we want to e.g. invoke `onStart` again (even if it's the same context)
+    if (evt === ContextEvent.ContextCreated) {
+        _ignore.delete(ctx);
+    }
+    internalInvokeLifecycleFunctions(ctx, evt);
+}
+function internalInvokeLifecycleFunctions(ctx, evt) {
+    // handle the initialized event like start. 
+    // This happens e.g. if onInitialized is registered AFTER the context has been created
+    if (evt === FrameEvent.Start) {
+        const initializeMethods = newMethods.get(ContextEvent.ContextCreated);
+        if (initializeMethods) {
+            internalInvokeLifecycleFunctions(ctx, ContextEvent.ContextCreated);
+        }
+    }
+    const shouldBeInvokedOnce = evt === FrameEvent.Start || evt === ContextEvent.ContextCreated;
+    const methods = allMethods.get(evt);
+    if (methods) {
+        if (methods.length > 0) {
+            const array = methods;
+            invoke(ctx, array, shouldBeInvokedOnce);
+        }
+    }
+    const newMethodsArray = newMethods.get(evt);
+    if (newMethodsArray) {
+        if (newMethodsArray.length > 0) {
+            // We copy the array here once because the array might be modified during the invoke
+            // E.g. if onStart(() => onStart(() => {})) is called
+            const array = [...newMethodsArray];
+            newMethodsArray.length = 0;
+            invoke(ctx, array, shouldBeInvokedOnce);
+            // if any of the new methods is still in the allMethods array, remove it
+            if (array.length > 0) {
+                if (!allMethods.has(evt)) {
+                    allMethods.set(evt, new Array());
+                }
+                const methodsArray = allMethods.get(evt);
+                methodsArray.push(...array);
+            }
+        }
+    }
+}
+const bufferArray = new Array();
+const hookContext = {
+    context: null
+};
+function invoke(ctx, methods, invokeOnce) {
+    bufferArray.length = 0;
+    for (let i = 0; i < methods.length; i++) {
+        bufferArray.push(methods[i]);
+    }
+    let ignoreSet = _ignore.get(ctx);
+    for (let i = 0; i < bufferArray.length; i++) {
+        const entry = bufferArray[i];
+        let invoke = true;
+        if (ignoreSet && ignoreSet.has(entry)) {
+            invoke = false;
+        }
+        if (invoke) {
+            try {
+                hookContext.context = ctx;
+                entry.method?.call(hookContext, ctx);
+            }
+            catch (e) {
+                console.error("Error in lifecycle method", e);
+            }
+        }
+        // Remove the method if it's a one time call
+        if (entry.options?.once) {
+            for (let j = 0; j < methods.length; j++) {
+                if (methods[j] === entry) {
+                    methods.splice(j, 1);
+                    break;
+                }
+            }
+        }
+        else if (invokeOnce) {
+            if (!ignoreSet) {
+                ignoreSet = new Set();
+                _ignore.set(ctx, ignoreSet);
+            }
+            ignoreSet.add(entry);
+        }
+    }
+}
+const _ignore = new WeakMap();
+//# sourceMappingURL=engine_lifecycle_functions_internal.js.map

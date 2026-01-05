@@ -1,0 +1,14 @@
+import { Object3D } from "three";
+import { Behaviour, GameObject } from "../Component.js";
+/** @internal */
+export declare class AvatarEyeLook_Rotation extends Behaviour {
+    head: GameObject | null;
+    eyes: GameObject[] | null;
+    target: Object3D | null;
+    private brain;
+    awake(): void;
+    private vec;
+    private static forward;
+    private currentTargetPoint;
+    update(): void;
+}

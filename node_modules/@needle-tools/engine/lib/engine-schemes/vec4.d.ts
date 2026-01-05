@@ -1,0 +1,12 @@
+import * as flatbuffers from 'flatbuffers';
+export declare class Vec4 {
+    bb: flatbuffers.ByteBuffer | null;
+    bb_pos: number;
+    __init(i: number, bb: flatbuffers.ByteBuffer): Vec4;
+    x(): number;
+    y(): number;
+    z(): number;
+    w(): number;
+    static sizeOf(): number;
+    static createVec4(builder: flatbuffers.Builder, x: number, y: number, z: number, w: number): flatbuffers.Offset;
+}

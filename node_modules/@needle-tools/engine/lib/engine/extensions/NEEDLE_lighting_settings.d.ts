@@ -1,0 +1,37 @@
+import { Color } from "three";
+import { type GLTF, type GLTFLoaderPlugin, GLTFParser } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { Behaviour } from "../../engine-components/Component.js";
+import { AmbientMode, DefaultReflectionMode } from "../engine_scenelighting.js";
+import { Context } from "../engine_setup.js";
+import { type SourceIdentifier } from "../engine_types.js";
+export declare const EXTENSION_NAME = "NEEDLE_lighting_settings";
+export type LightingSettings = {
+    ambientMode: AmbientMode;
+    ambientIntensity: number;
+    ambientLight: number[];
+    ambientTrilight: Array<number[]>;
+    environmentReflectionSource: DefaultReflectionMode;
+};
+export declare class NEEDLE_lighting_settings implements GLTFLoaderPlugin {
+    get name(): string;
+    private parser;
+    private sourceId;
+    private context;
+    constructor(parser: GLTFParser, sourceId: SourceIdentifier, context: Context);
+    afterRoot(_result: GLTF): Promise<void> | null;
+}
+export declare class SceneLightSettings extends Behaviour {
+    ambientMode: AmbientMode;
+    ambientLight?: Color;
+    ambientTrilight?: Color[];
+    ambientIntensity: number;
+    environmentReflectionSource: DefaultReflectionMode;
+    private _hasReflection;
+    private _ambientLightObj?;
+    private _hemisphereLightObj?;
+    awake(): void;
+    onDestroy(): void;
+    private calculateIntensityFactor;
+    onEnable(): void;
+    onDisable(): void;
+}

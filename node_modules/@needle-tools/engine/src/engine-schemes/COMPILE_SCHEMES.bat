@@ -1,0 +1,4 @@
+@echo off
+for /r %%i in (*.fbs) do (
+    flatc --ts %%i
+)

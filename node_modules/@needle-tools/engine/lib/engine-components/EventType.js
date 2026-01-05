@@ -1,0 +1,24 @@
+/**
+ * @internal
+ */
+export var EventType;
+(function (EventType) {
+    EventType[EventType["PointerEnter"] = 0] = "PointerEnter";
+    EventType[EventType["PointerExit"] = 1] = "PointerExit";
+    EventType[EventType["PointerDown"] = 2] = "PointerDown";
+    EventType[EventType["PointerUp"] = 3] = "PointerUp";
+    EventType[EventType["PointerClick"] = 4] = "PointerClick";
+    EventType[EventType["Drag"] = 5] = "Drag";
+    EventType[EventType["Drop"] = 6] = "Drop";
+    EventType[EventType["Scroll"] = 7] = "Scroll";
+    EventType[EventType["UpdateSelected"] = 8] = "UpdateSelected";
+    EventType[EventType["Select"] = 9] = "Select";
+    EventType[EventType["Deselect"] = 10] = "Deselect";
+    EventType[EventType["Move"] = 11] = "Move";
+    EventType[EventType["InitializePotentialDrag"] = 12] = "InitializePotentialDrag";
+    EventType[EventType["BeginDrag"] = 13] = "BeginDrag";
+    EventType[EventType["EndDrag"] = 14] = "EndDrag";
+    EventType[EventType["Submit"] = 15] = "Submit";
+    EventType[EventType["Cancel"] = 16] = "Cancel";
+})(EventType || (EventType = {}));
+//# sourceMappingURL=EventType.js.map

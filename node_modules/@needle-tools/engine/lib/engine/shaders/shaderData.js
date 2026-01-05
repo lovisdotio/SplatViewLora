@@ -1,0 +1,59 @@
+export class ShaderData {
+    programs = [];
+    shaders = [];
+    techniques = [];
+}
+export class ShaderProgram {
+    vertexShader;
+    fragmentShader;
+}
+export var ShaderType;
+(function (ShaderType) {
+    ShaderType[ShaderType["Fragment"] = 35632] = "Fragment";
+    ShaderType[ShaderType["Vertex"] = 35633] = "Vertex";
+})(ShaderType || (ShaderType = {}));
+export class Shader {
+    name;
+    type;
+    uri;
+    code;
+}
+export class Technique {
+    program;
+    attributes = new Map();
+    ;
+    uniforms = new Map();
+}
+export class ShaderAttribute {
+    semantic;
+}
+export class ShaderUniform {
+    name = "";
+    type;
+    semantic;
+    count = 0;
+    node = 0;
+}
+export var UniformType;
+(function (UniformType) {
+    UniformType[UniformType["INT"] = 5124] = "INT";
+    UniformType[UniformType["FLOAT"] = 5126] = "FLOAT";
+    UniformType[UniformType["FLOAT_VEC2"] = 35664] = "FLOAT_VEC2";
+    UniformType[UniformType["FLOAT_VEC3"] = 35665] = "FLOAT_VEC3";
+    UniformType[UniformType["FLOAT_VEC4"] = 35666] = "FLOAT_VEC4";
+    UniformType[UniformType["INT_VEC2"] = 35667] = "INT_VEC2";
+    UniformType[UniformType["INT_VEC3"] = 35668] = "INT_VEC3";
+    UniformType[UniformType["INT_VEC4"] = 35669] = "INT_VEC4";
+    UniformType[UniformType["BOOL"] = 35670] = "BOOL";
+    UniformType[UniformType["BOOL_VEC2"] = 35671] = "BOOL_VEC2";
+    UniformType[UniformType["BOOL_VEC3"] = 35672] = "BOOL_VEC3";
+    UniformType[UniformType["BOOL_VEC4"] = 35673] = "BOOL_VEC4";
+    UniformType[UniformType["FLOAT_MAT2"] = 35674] = "FLOAT_MAT2";
+    UniformType[UniformType["FLOAT_MAT3"] = 35675] = "FLOAT_MAT3";
+    UniformType[UniformType["FLOAT_MAT4"] = 35676] = "FLOAT_MAT4";
+    UniformType[UniformType["SAMPLER_2D"] = 35678] = "SAMPLER_2D";
+    UniformType[UniformType["SAMPLER_3D"] = 35680] = "SAMPLER_3D";
+    UniformType[UniformType["SAMPLER_CUBE"] = 35681] = "SAMPLER_CUBE";
+    UniformType[UniformType["UNKNOWN"] = 0] = "UNKNOWN";
+})(UniformType || (UniformType = {}));
+//# sourceMappingURL=shaderData.js.map

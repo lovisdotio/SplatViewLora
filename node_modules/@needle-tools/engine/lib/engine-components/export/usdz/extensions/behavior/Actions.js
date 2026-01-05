@@ -1,0 +1,89 @@
+import { USDObject } from "../../ThreeUSDZExporter.js";
+import { ActionBuilder } from "./BehavioursBuilder.js";
+export class DocumentAction {
+    get id() { return this.object.uuid; }
+    object;
+    model;
+    constructor(obj) {
+        this.object = obj;
+    }
+    apply(document) {
+        if (!this.model) {
+            this.model = document.findById(this.object.uuid);
+            if (!this.model) {
+                console.error("could not find model with id " + this.object.uuid);
+                return;
+            }
+        }
+        this.onApply(document);
+    }
+}
+export class VariantAction extends DocumentAction {
+    constructor(obj, matrix, material, geometry) {
+        super(obj);
+        this.matrix = matrix;
+        this.material = material;
+        this.geometry = geometry;
+    }
+    matrix;
+    material;
+    geometry;
+    onApply(_) {
+        const model = this.model;
+        if (!model)
+            return;
+        if (!model.parent?.isDynamic) {
+            USDObject.createEmptyParent(model);
+        }
+        const clone = model.clone();
+        if (this.matrix)
+            clone.setMatrix(this.matrix);
+        if (this.material)
+            clone.material = this.material;
+        if (this.geometry)
+            clone.geometry = this.geometry;
+        model.parent?.add(clone);
+    }
+    _enableAction;
+    _disableAction;
+    enable() {
+        if (this._enableAction)
+            return this._enableAction;
+        this._enableAction = ActionBuilder.fadeAction(this.object, 0, true);
+        ;
+        return this._enableAction;
+    }
+    disable() {
+        if (this._disableAction)
+            return this._disableAction;
+        this._disableAction = ActionBuilder.fadeAction(this.object, 0, false);
+        ;
+        return this._disableAction;
+    }
+}
+export class ActionCollection {
+    actions;
+    sortedActions;
+    constructor(actions) {
+        this.actions = [...actions];
+    }
+    // organize is called once when getting an action for the first time
+    // the sorted actions are baked then and adding new actions will not be added anymore
+    organize() {
+        this.sortedActions = {};
+        for (const action of this.actions) {
+            const id = action.id;
+            if (!this.sortedActions[id]) {
+                this.sortedActions[id] = [];
+            }
+            this.sortedActions[id].push(action);
+        }
+    }
+    /** returns all document actions affecting the object passed in */
+    getActions(obj) {
+        if (!this.sortedActions)
+            this.organize();
+        return this.sortedActions[obj.uuid];
+    }
+}
+//# sourceMappingURL=Actions.js.map

@@ -1,0 +1,4 @@
+export * from "./engine_serialization_builtin_serializer.js";
+export { deserializeObject, SerializationContext, serializeObject } from "./engine_serialization_core.js";
+export { serializable, serializeable } from "./engine_serialization_decorator.js";
+//# sourceMappingURL=engine_serialization.js.map

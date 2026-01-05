@@ -1,0 +1,25 @@
+import { type Behavior, type Particle, type ParticleSystem } from "three.quarks";
+import { SubEmitterType } from "./ParticleSystem.js";
+import type { IParticleSystem } from "./ParticleSystemModules.js";
+export declare class ParticleSubEmitter implements Behavior {
+    private system;
+    private particleSystem;
+    private subSystem;
+    subParticleSystem?: ParticleSystem | undefined;
+    type: string;
+    emitterType?: SubEmitterType;
+    emitterProbability?: number;
+    private q_;
+    private v_;
+    private v2_;
+    private _emitterMatrix;
+    private _circularBuffer;
+    constructor(system: IParticleSystem, particleSystem: ParticleSystem, subSystem: IParticleSystem, subParticleSystem?: ParticleSystem | undefined);
+    clone(): Behavior;
+    initialize(particle: Particle): void;
+    update(particle: Particle, _delta: number): void;
+    frameUpdate(_delta: number): void;
+    toJSON(): any;
+    reset(): void;
+    private run;
+}

@@ -1,0 +1,18 @@
+import { Behavior } from './Behavior';
+import { Particle } from '../Particle';
+import { FunctionValueGenerator, ValueGenerator } from '../functions/ValueGenerator';
+import { IntervalValue } from '../functions';
+export declare class RotationBySpeed implements Behavior {
+    angularVelocity: ValueGenerator | FunctionValueGenerator;
+    speedRange: IntervalValue;
+    type: string;
+    private tempQuat;
+    constructor(angularVelocity: ValueGenerator | FunctionValueGenerator, speedRange: IntervalValue);
+    initialize(particle: Particle): void;
+    update(particle: Particle, delta: number): void;
+    toJSON(): any;
+    static fromJSON(json: any): Behavior;
+    frameUpdate(delta: number): void;
+    clone(): Behavior;
+    reset(): void;
+}

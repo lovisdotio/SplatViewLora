@@ -1,0 +1,100 @@
+import { BufferGeometry,Material, Matrix4, Object3D } from "three";
+
+import { USDDocument,USDObject } from "../../ThreeUSDZExporter.js";
+import { ActionBuilder, ActionModel } from "./BehavioursBuilder.js";
+
+export abstract class DocumentAction {
+
+    get id(): string { return this.object.uuid; }
+
+    protected object: Object3D;
+    protected model?: USDObject;
+
+    constructor(obj: Object3D) {
+        this.object = obj;
+    }
+
+    apply(document: USDDocument) {
+        if (!this.model) {
+            this.model = document.findById(this.object.uuid);
+            if (!this.model) {
+                console.error("could not find model with id " + this.object.uuid);
+                return;
+            }
+        }
+        this.onApply(document);
+    }
+
+    protected abstract onApply(document: USDDocument);
+}
+
+export class VariantAction extends DocumentAction {
+    constructor(obj: Object3D, matrix?: Matrix4, material?: Material, geometry?: BufferGeometry) {
+        super(obj);
+        this.matrix = matrix;
+        this.material = material;
+        this.geometry = geometry;
+    }
+
+    private matrix: Matrix4 | undefined;
+    private material: Material | undefined;
+    private geometry: BufferGeometry | undefined;
+
+    protected onApply(_: USDDocument) {
+        const model = this.model;
+        if (!model) return;
+        if (!model.parent?.isDynamic) {
+            USDObject.createEmptyParent(model);
+        }
+        const clone = model.clone();
+        if (this.matrix) clone.setMatrix(this.matrix);
+        if (this.material) clone.material = this.material;
+        if (this.geometry) clone.geometry = this.geometry;
+        model.parent?.add(clone);
+    }
+
+    private _enableAction?: ActionModel;
+    private _disableAction?: ActionModel;
+
+    enable(): ActionModel {
+        if (this._enableAction) return this._enableAction;
+        this._enableAction = ActionBuilder.fadeAction(this.object, 0, true);;
+        return this._enableAction;
+    }
+
+    disable(): ActionModel {
+        if (this._disableAction) return this._disableAction;
+        this._disableAction = ActionBuilder.fadeAction(this.object, 0, false);;
+        return this._disableAction;
+    }
+}
+
+export class ActionCollection {
+
+    private actions: DocumentAction[];
+    private sortedActions?: { [key: string]: DocumentAction[] };
+
+    constructor(actions: DocumentAction[]) {
+        this.actions = [...actions]
+    }
+
+    // organize is called once when getting an action for the first time
+    // the sorted actions are baked then and adding new actions will not be added anymore
+    private organize() {
+        this.sortedActions = {};
+        for (const action of this.actions) {
+            const id = action.id;
+            if (!this.sortedActions[id]) {
+                this.sortedActions[id] = [];
+            }
+            this.sortedActions[id].push(action);
+        }
+    }
+
+    /** returns all document actions affecting the object passed in */
+    getActions(obj: Object3D): DocumentAction[] | null {
+        if (!this.sortedActions) this.organize();
+        return this.sortedActions![obj.uuid];
+    }
+
+}

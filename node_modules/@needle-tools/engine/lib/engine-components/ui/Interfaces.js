@@ -1,0 +1,13 @@
+export {};
+// export abstract class LayoutGroup extends Behaviour implements IRectTransformChangedReceiver, ILayoutGroup {
+//     get isLayoutGroup(): boolean {
+//         return true;
+//     }
+//     updateLayout() {
+//         throw new Error("Method not implemented.");
+//     }
+//     onParentRectTransformChanged(comp: IRectTransform): void {
+//         throw new Error("Method not implemented.");
+//     }
+// }
+//# sourceMappingURL=Interfaces.js.map

@@ -1,0 +1,12 @@
+/**
+ * This module contains the networking schemes used by Needle Engine.
+ * They are used to define the structure of the data that is sent over the network.
+ * Networking can use plain text or flatbuffers for serialization.
+ * Flatbuffers are more efficient and faster than plain text, but require more setup work.
+ *
+ * Some core components, like SyncedCamera or SyncedTransform, thus use Flatbuffers for networking to reduce latency and bandwidth.
+ *
+ * Schemes are compiled with [Flatbuffers 2.0](https://github.com/google/flatbuffers/releases/tag/v2.0.0).
+ * @module Networking Schemes
+ */
+export * from "./schemes.js";

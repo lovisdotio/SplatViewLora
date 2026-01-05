@@ -1,0 +1,45 @@
+import { isLocalNetwork } from "../engine_networking_utils.js";
+import { getParam } from "../engine_utils.js";
+import { addLog, clearMessages, LogType, setAllowBalloonMessages, setAllowOverlayMessages } from "./debug_overlay.js";
+export { clearMessages as clearBalloonMessages, 
+/** @deprecated use clearBalloonMessages instead */
+clearMessages as clearOverlayMessages, LogType, setAllowBalloonMessages, 
+// eslint-disable-next-line deprecation/deprecation
+setAllowOverlayMessages, };
+export { enableSpatialConsole } from "./debug_spatial_console.js";
+const noDevLogs = getParam("nodevlogs");
+/** Displays a debug message on screen for a certain amount of time */
+export function showBalloonMessage(text, logType = LogType.Log) {
+    addLog(logType, text);
+}
+/** Displays a warning message on screen for a certain amount of time */
+export function showBalloonWarning(text) {
+    showBalloonMessage(text, LogType.Warn);
+}
+/** Displays an error message on screen for a certain amount of time */
+export function showBalloonError(text) {
+    showBalloonMessage(text, LogType.Error);
+}
+let _manuallySetDevEnvironment;
+let _cachedDevEnvironment;
+/** True when the application runs on a local url */
+export function isDevEnvironment() {
+    if (noDevLogs)
+        return false;
+    if (_manuallySetDevEnvironment !== undefined)
+        return _manuallySetDevEnvironment;
+    if (_cachedDevEnvironment !== undefined)
+        return _cachedDevEnvironment;
+    let res = isLocalNetwork();
+    if (!res) {
+        // is stackblitz?
+        res = window.location.hostname.endsWith(".local-credentialless.webcontainer.io");
+    }
+    _cachedDevEnvironment = res;
+    return res;
+}
+/** Enforce the dev environment flag to be true or false */
+export function setDevEnvironment(val) {
+    _manuallySetDevEnvironment = val;
+}
+//# sourceMappingURL=debug.js.map

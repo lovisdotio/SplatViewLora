@@ -1,0 +1,9 @@
+import { Behaviour } from "../Component.js";
+/** @internal */
+export declare class Avatar_MustacheShake extends Behaviour {
+    private voip;
+    private marker;
+    private _startPosition;
+    awake(): void;
+    update(): void;
+}

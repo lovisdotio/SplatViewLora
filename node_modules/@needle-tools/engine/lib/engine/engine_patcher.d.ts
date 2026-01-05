@@ -1,0 +1,10 @@
+export type Prefix = (...args: any[]) => any;
+export type Postfix = (...args: any[]) => any;
+/**
+ * Use patcher for patching properties insteadof calling Object.defineProperty individually
+ * since this will cause conflicts if multiple patches need to be applied to the same property
+ */
+export declare function addPatch<T extends object>(prototype: T, fieldName: string, beforeCallback?: Prefix | null, afterCallback?: Postfix | null): void;
+/** Removes prefix or postfix */
+export declare function removePatch(prototype: object, fieldName: string, prefixOrPostfix: Prefix | Postfix): void;
+export declare const NeedlePatchesKey = "Needle:Patches";

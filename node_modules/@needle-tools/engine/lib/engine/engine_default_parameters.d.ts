@@ -1,0 +1,2 @@
+export declare const showGizmos: string | number | boolean;
+export declare const debugExtension: string | number | boolean;

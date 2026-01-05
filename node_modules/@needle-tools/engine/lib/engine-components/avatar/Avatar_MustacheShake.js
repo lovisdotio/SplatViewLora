@@ -1,0 +1,30 @@
+import { Behaviour, GameObject } from "../Component.js";
+import { Voip } from "../Voip.js";
+import { AvatarMarker } from "../webxr/WebXRAvatar.js";
+/** @internal */
+export class Avatar_MustacheShake extends Behaviour {
+    voip = null;
+    marker = null;
+    _startPosition = null;
+    awake() {
+        this.voip = GameObject.findObjectOfType(Voip, this.context);
+        this.marker = GameObject.getComponentInParent(this.gameObject, AvatarMarker);
+        // console.log(this);
+    }
+    update() {
+        if (!this.voip || !this.marker)
+            return;
+        if (this.context.time.frameCount % 10 !== 0)
+            return;
+        const id = this.marker.connectionId;
+        const freq = this.voip.getFrequency(id);
+        if (freq == null)
+            return;
+        if (!this._startPosition) {
+            this._startPosition = this.gameObject.position.clone();
+        }
+        const t = freq / 100;
+        this.gameObject.position.y = this._startPosition.y + t * 0.07;
+    }
+}
+//# sourceMappingURL=Avatar_MustacheShake.js.map

@@ -1,0 +1,4 @@
+/** @internal */
+export declare type OffscreenCanvasExt = OffscreenCanvas & {
+    convertToBlob: (options?: any) => Promise<Blob>;
+};

@@ -1,0 +1,31 @@
+import * as flatbuffers from 'flatbuffers';
+import { Transform } from './transform.js';
+export declare class SyncedTransformModel {
+    bb: flatbuffers.ByteBuffer | null;
+    bb_pos: number;
+    __init(i: number, bb: flatbuffers.ByteBuffer): SyncedTransformModel;
+    static getRootAsSyncedTransformModel(bb: flatbuffers.ByteBuffer, obj?: SyncedTransformModel): SyncedTransformModel;
+    static getSizePrefixedRootAsSyncedTransformModel(bb: flatbuffers.ByteBuffer, obj?: SyncedTransformModel): SyncedTransformModel;
+    /**
+     * the guid of the object that this transform info belongs to
+     */
+    guid(): string | null;
+    guid(optionalEncoding: flatbuffers.Encoding): string | Uint8Array | null;
+    /**
+     * if the transform interpolation should be fast, this is true when the send interval is low and we want to have snappy transforms
+     */
+    fast(): boolean;
+    transform(obj?: Transform): Transform | null;
+    /**
+     * if the server should not save this info
+     */
+    dontSave(): boolean;
+    static startSyncedTransformModel(builder: flatbuffers.Builder): void;
+    static addGuid(builder: flatbuffers.Builder, guidOffset: flatbuffers.Offset): void;
+    static addFast(builder: flatbuffers.Builder, fast: boolean): void;
+    static addTransform(builder: flatbuffers.Builder, transformOffset: flatbuffers.Offset): void;
+    static addDontSave(builder: flatbuffers.Builder, dontSave: boolean): void;
+    static endSyncedTransformModel(builder: flatbuffers.Builder): flatbuffers.Offset;
+    static finishSyncedTransformModelBuffer(builder: flatbuffers.Builder, offset: flatbuffers.Offset): void;
+    static finishSizePrefixedSyncedTransformModelBuffer(builder: flatbuffers.Builder, offset: flatbuffers.Offset): void;
+}

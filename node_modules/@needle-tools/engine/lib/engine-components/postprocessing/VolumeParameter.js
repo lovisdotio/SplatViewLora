@@ -1,0 +1,137 @@
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+import { serializable } from "../../engine/engine_serialization.js";
+import { TypeSerializer } from "../../engine/engine_serialization_core.js";
+import { getParam } from "../../engine/engine_utils.js";
+const debug = getParam("debugpost");
+export class VolumeParameter {
+    isVolumeParameter = true;
+    constructor(value) {
+        if (value !== undefined)
+            this.initialize(value);
+    }
+    _isInitialized = false;
+    get isInitialized() { return this._isInitialized; }
+    initialize(value) {
+        if (value !== undefined) {
+            this._value = value;
+            this._defaultValue = value;
+            this._valueRaw = value;
+            this._isInitialized = true;
+        }
+    }
+    get overrideState() {
+        return this._active;
+    }
+    set overrideState(val) {
+        if (this._active === val)
+            return;
+        this._active = val;
+        const value = val ? this._valueRaw : this._defaultValue;
+        this.processValue(value, true);
+    }
+    _active = true;
+    get value() {
+        return this._valueRaw;
+    }
+    set value(val) {
+        // When a user creates an effect and then just sets a VolumeParameter via `effect.param.value` we want to use this value as the initial value
+        if (!this.isInitialized)
+            this.initialize(val);
+        this.processValue(val, false);
+    }
+    _value;
+    _valueRaw;
+    set defaultValue(val) {
+        this._defaultValue = val;
+    }
+    _defaultValue = undefined;
+    /** enforce the value to be set and onValueChanged to be called if assigned */
+    __init() {
+        this.processValue(this._valueRaw, true);
+    }
+    /** called to modify a changing value before it is saved */
+    valueProcessor;
+    /** called when a value has changed (with the final value) */
+    onValueChanged;
+    processValue(val, forceUpdate) {
+        if (val === null || val === undefined)
+            return;
+        if (!forceUpdate && this.testIfValueChanged(val) === false)
+            return;
+        const oldValue = this._value;
+        if (debug) {
+            let hasChanged = true;
+            if (typeof oldValue == "number" && typeof val == "number") {
+                const oldFixed = oldValue?.toFixed(4);
+                const newFixed = val?.toFixed(4);
+                if (oldFixed != newFixed) {
+                    hasChanged = true;
+                }
+                else
+                    hasChanged = false;
+            }
+        }
+        if (!this._active && this._defaultValue !== undefined) {
+            // when setting the default value we dont process them (default values are explicitly set from the effect that declares them 
+            // with the value that is expected to received when the parameter is disabled)
+            this._value = this._defaultValue;
+            val = this._defaultValue;
+            this._valueRaw = val;
+        }
+        else {
+            this._valueRaw = val;
+            if (this._active && this.valueProcessor)
+                val = this.valueProcessor(val);
+            this._value = val;
+        }
+        if (this.onValueChanged) {
+            this.onValueChanged(val, oldValue, this);
+        }
+    }
+    testIfValueChanged(newValue) {
+        if (this._valueRaw === newValue)
+            return false;
+        // TODO: may need checks for colors or vectors (check by xyz,rgb because they might come in as anonymous objects via editor modifications)
+        return true;
+    }
+}
+__decorate([
+    serializable()
+], VolumeParameter.prototype, "overrideState", null);
+__decorate([
+    serializable()
+], VolumeParameter.prototype, "value", null);
+class VolumeParameterSerializer extends TypeSerializer {
+    constructor() {
+        super([VolumeParameter]);
+    }
+    onSerialize(_data, _context) {
+    }
+    onDeserialize(data, context) {
+        const target = context.target;
+        const name = context.path;
+        let parameter;
+        if (target && name) {
+            parameter = target[name];
+        }
+        if (!(typeof parameter === "object") || (typeof parameter === "object" && parameter.isVolumeParameter !== true)) {
+            parameter = new VolumeParameter();
+        }
+        if (typeof data === "object" && "value" in data) {
+            const value = data.value;
+            parameter.initialize(value);
+            parameter.overrideState = data.overrideState;
+        }
+        else {
+            parameter.value = data;
+        }
+        return parameter;
+    }
+}
+new VolumeParameterSerializer();
+//# sourceMappingURL=VolumeParameter.js.map

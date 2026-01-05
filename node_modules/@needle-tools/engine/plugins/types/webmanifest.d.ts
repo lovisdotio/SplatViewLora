@@ -1,0 +1,33 @@
+
+
+
+declare type Icon = {
+    src: string;
+    /** string with concatenated size options, e.g. "48x48 96x96 192x192" */
+    sizes: string;
+    /** MIME type, e.g. image/svg+xml */
+    type: string;
+    /** Icon purpose, e.g. "any" or "maskable", which have different safe zones. */
+    purpose: string;
+}
+
+export declare type Webmanifest = {
+    start_url: string;
+    name?: string;
+    short_name?: string;
+    /** Unique ID – make sure that apps that live on the same subdomain use different IDs. */
+    id?: string;
+    icons?: Array<Icon>;
+    /** Workbox config as used by vite-pwa */
+    workbox?: object;
+}
+
+export declare type NeedlePWAOptions = {
+    /** Update check interval in milliseconds. After this time, a check is done if a new version is available. */
+    updateInterval?: number;
+}
+
+export declare type NeedlePWAProcessContext = {
+    /** Temporarily generated files that will be cleaned up after PWA export */
+    generatedFiles: Array<string>;
+}

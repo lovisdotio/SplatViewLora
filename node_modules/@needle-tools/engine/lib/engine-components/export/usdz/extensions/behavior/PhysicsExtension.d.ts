@@ -1,0 +1,7 @@
+import { Object3D } from "three";
+import type { IUSDExporterExtension } from "../../Extension.js";
+import { USDObject, USDZExporterContext } from "../../ThreeUSDZExporter.js";
+export declare class PhysicsExtension implements IUSDExporterExtension {
+    get extensionName(): string;
+    onExportObject?(object: Object3D, model: USDObject, _context: USDZExporterContext): void;
+}

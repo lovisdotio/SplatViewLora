@@ -1,0 +1,56 @@
+/// <reference types="webxr" />
+/**
+ * Factory to create WebXR buttons for AR, VR, Quicklook and Send to Quest
+ * The buttons are created as HTMLButtonElements and can be added to the DOM.
+ * The buttons will automatically hide when a XR session is started and show again when the session ends.
+ */
+export declare class WebXRButtonFactory {
+    private static _instance;
+    private static create;
+    static getOrCreate(): WebXRButtonFactory;
+    private get isSecureConnection();
+    get quicklookButton(): HTMLButtonElement | undefined;
+    private _quicklookButton?;
+    get arButton(): HTMLButtonElement | undefined;
+    private _arButton?;
+    get vrButton(): HTMLButtonElement | undefined;
+    private _vrButton?;
+    get sendToQuestButton(): HTMLButtonElement | undefined;
+    private _sendToQuestButton?;
+    get qrButton(): HTMLButtonElement;
+    /** get or create the quicklook button
+     * Behaviour of the button:
+     * - if the button is clicked a USDZExporter component will be searched for in the scene and if found, it will be used to export the scene to USDZ / Quicklook
+    */
+    createQuicklookButton(): HTMLButtonElement;
+    /** get or create the WebXR AR button
+     * @param init optional session init options
+     * Behaviour of the button:
+     * - if the device supports AR, the button will be visible and clickable
+     * - if the device does not support AR, the button will be hidden
+     * - if the device changes and now supports AR, the button will be visible
+     */
+    createARButton(init?: XRSessionInit): HTMLButtonElement;
+    /** get or create the WebXR VR button
+     * @param init optional session init options
+     * Behaviour of the button:
+     * - if the device supports VR, the button will be visible and clickable
+     * - if the device does not support VR, the button will be hidden
+     * - if the device changes and now supports VR, the button will be visible
+    */
+    createVRButton(init?: XRSessionInit): HTMLButtonElement;
+    /** get or create the Send To Quest button
+     * Behaviour of the button:
+     * - if the button is clicked, the current URL will be sent to the Oculus Browser on the Quest
+    */
+    createSendToQuestButton(): HTMLButtonElement;
+    /**
+     * @deprecated please use ButtonsFactory.getOrCreate().createQRCode(). This method will be removed in a future update
+     */
+    createQRCode(): HTMLButtonElement;
+    private updateSessionSupported;
+    private hideElementDuringXRSession;
+    private listenToXRSessionState;
+}
+/** @deprecated please use WebXRButtonFactory. This type will be removed in a future update */
+export type NeedleWebXRHtmlElement = WebXRButtonFactory;

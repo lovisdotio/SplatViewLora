@@ -1,0 +1,22 @@
+/// <reference types="webxr" />
+import type { Context } from "../engine_context.js";
+import { NeedleXRSession } from "./NeedleXRSession.js";
+declare type XRControllerType = "hand" | "controller";
+export declare class NeedleXRSync {
+    hasState(userId: string | null | undefined): boolean;
+    /** Is the left controller or hand tracked */
+    isTracking(userId: string | null | undefined, handedness: XRHandedness): boolean | undefined;
+    /** Is it hand tracking or a controller */
+    getDeviceType(userId: string, handedness: XRHandedness): XRControllerType | undefined | "unknown";
+    private readonly context;
+    constructor(context: Context);
+    destroy(): void;
+    private onJoinedRoom;
+    private onLeftRoom;
+    private onOtherUserJoinedRoom;
+    private onOtherUserLeftRoom;
+    private _states;
+    onUpdate(session: NeedleXRSession): void;
+    onExitXR(session: NeedleXRSession): void;
+}
+export {};

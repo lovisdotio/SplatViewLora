@@ -1,0 +1,6 @@
+/**
+ * Call with the name of an attribute that you want to receive change events for
+ * This is useful for example if you want to add custom attributes to <needle-engine>
+ * Use the addAttributeChangeCallback utility methods to register callback events
+ */
+export declare function registerObservableAttribute(name: string): Promise<void>;

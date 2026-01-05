@@ -1,0 +1,18 @@
+include "vec.fbs";
+
+
+table VrUserStateBuffer {
+    time:long;
+    avatarId:string;
+    position:Vec3;
+    rotation:Vec4;
+    scale:float;
+    headPosition:Vec3;
+    headRotation:Vec4;
+    posLeftHand:Vec3;
+    posRightHand:Vec3;
+    rotLeftHand:Vec4;
+    rotRightHand:Vec4;
+}
+
+root_type VrUserStateBuffer;

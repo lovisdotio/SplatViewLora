@@ -1,0 +1,122 @@
+import { Vector3 } from "three";
+import { OwnershipModel } from "../../engine/engine_networking.js";
+import { Context } from "../../engine/engine_setup.js";
+import * as utils from "../../engine/engine_three_utils.js";
+import { TypeStore } from "../../engine/engine_typestore.js";
+import { Behaviour, GameObject } from "../Component.js";
+import { AvatarMarker } from "../webxr/WebXRAvatar.js";
+/** @internal */
+export class Avatar_POI {
+    static Pois = [];
+    static LastChangeTime = 0;
+    static Add(context, obj, ignoredBy = null) {
+        if (!obj)
+            return;
+        for (const e of this.Pois) {
+            if (e.obj === obj)
+                return;
+        }
+        this.Pois.push({ obj: obj, avatar: ignoredBy });
+        this.LastChangeTime = context.time.time;
+        // console.log("Added", obj?.name);
+    }
+    static Remove(context, obj) {
+        if (!obj)
+            return;
+        for (const e of this.Pois) {
+            if (e.obj === obj) {
+                this.Pois.splice(this.Pois.indexOf(e), 1);
+                this.LastChangeTime = context?.time.time ?? Context.Current?.time.time;
+                // console.log("Removed", obj?.name);
+                return;
+            }
+        }
+    }
+}
+var NetworkEvents;
+(function (NetworkEvents) {
+    NetworkEvents["TargetChanged"] = "avatar-look-target-changed";
+})(NetworkEvents || (NetworkEvents = {}));
+class TargetModel {
+    guid;
+    position = new Vector3();
+}
+/** @internal */
+export class Avatar_Brain_LookAt extends Behaviour {
+    set controlledTarget(target) {
+        this.target = target;
+        // HACK
+        const r = TypeStore.get("MoveRandom");
+        if (r && this.target) {
+            const rm = GameObject.getComponent(this.target, r);
+            if (rm) {
+                rm.destroy();
+            }
+        }
+        // this.target.add(new AxesHelper(.1));
+    }
+    // that target to copy positions into
+    target = null;
+    avatar = null;
+    _model = null;
+    _targetModel = new TargetModel();
+    _currentTargetObject = null;
+    _lastUpdateTime = 0;
+    _lookDuration = 0;
+    _lastPoiChangedTime = 0;
+    awake() {
+        this.avatar = GameObject.getComponentInParent(this.gameObject, AvatarMarker);
+        if (this.avatar) {
+            const marker = GameObject.getComponentInParent(this.gameObject, AvatarMarker);
+            this._model = new OwnershipModel(this.context.connection, this.guid);
+            if (marker?.isLocalAvatar) {
+                this._model.requestOwnership();
+            }
+        }
+        this.context.connection.beginListen(NetworkEvents.TargetChanged, (cb) => {
+            if (this.target && cb && cb.guid === this.avatar?.guid) {
+                utils.setWorldPosition(this.target, cb.position);
+            }
+        });
+        // console.log(this);
+    }
+    update() {
+        const connected = this.context.connection.isConnected;
+        if (!connected || this._model?.hasOwnership) {
+            if (Avatar_POI.LastChangeTime !== this._lastPoiChangedTime) {
+                this._lastPoiChangedTime = Avatar_POI.LastChangeTime;
+                this._lookDuration = 0;
+            }
+            this.selectTarget();
+            // send target info
+            if (this._currentTargetObject && this.context.time.frameCount % 10 === 0 && this.target) {
+                const wp = utils.getWorldPosition(this._currentTargetObject);
+                utils.setWorldPosition(this.target, wp);
+                if (this.context.connection.isConnected && this.avatar) {
+                    this.context.connection.send(NetworkEvents.TargetChanged, this._targetModel);
+                    this._targetModel.guid = this.avatar.guid;
+                    this._targetModel.position.copy(wp);
+                }
+            }
+        }
+    }
+    selectTarget() {
+        // select random target
+        const td = this.context.time.time - this._lastUpdateTime;
+        if (td > this._lookDuration) {
+            this._lastUpdateTime = this.context.time.time;
+            this._lookDuration = Math.random() * .5 + .2;
+            const pois = Avatar_POI.Pois;
+            if (pois.length > 0) {
+                const poi = pois[Math.floor(Math.random() * pois.length)];
+                if (poi && poi.obj) {
+                    if (poi.avatar && poi.avatar === this.avatar)
+                        return;
+                    this._currentTargetObject = poi.obj;
+                    // console.log(this._currentTargetObject);
+                }
+            }
+        }
+    }
+}
+//# sourceMappingURL=Avatar_Brain_LookAt.js.map

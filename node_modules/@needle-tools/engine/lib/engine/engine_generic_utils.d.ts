@@ -1,0 +1,1 @@
+export function safeInvoke(fun: any, args: any): boolean;

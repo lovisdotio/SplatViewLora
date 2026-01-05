@@ -1,0 +1,55 @@
+export declare class ShaderData {
+    programs: Array<ShaderProgram>;
+    shaders: Array<Shader>;
+    techniques: Array<Technique>;
+}
+export declare class ShaderProgram {
+    vertexShader: number | undefined;
+    fragmentShader: number | undefined;
+}
+export declare enum ShaderType {
+    Fragment = 35632,
+    Vertex = 35633
+}
+export declare class Shader {
+    name: string | undefined;
+    type: ShaderType | undefined;
+    uri: string | null | undefined;
+    code: string | null | undefined;
+}
+export declare class Technique {
+    program: number | undefined;
+    attributes: Map<string, ShaderAttribute>;
+    uniforms: Map<string, ShaderUniform>;
+}
+export declare class ShaderAttribute {
+    semantic: string | undefined;
+}
+export declare class ShaderUniform {
+    name: string;
+    type: UniformType | undefined;
+    semantic: string | undefined;
+    count: number;
+    node: number;
+}
+export declare enum UniformType {
+    INT = 5124,
+    FLOAT = 5126,
+    FLOAT_VEC2 = 35664,
+    FLOAT_VEC3 = 35665,
+    FLOAT_VEC4 = 35666,
+    INT_VEC2 = 35667,
+    INT_VEC3 = 35668,
+    INT_VEC4 = 35669,
+    BOOL = 35670,
+    BOOL_VEC2 = 35671,
+    BOOL_VEC3 = 35672,
+    BOOL_VEC4 = 35673,
+    FLOAT_MAT2 = 35674,
+    FLOAT_MAT3 = 35675,
+    FLOAT_MAT4 = 35676,
+    SAMPLER_2D = 35678,
+    SAMPLER_3D = 35680,
+    SAMPLER_CUBE = 35681,
+    UNKNOWN = 0
+}

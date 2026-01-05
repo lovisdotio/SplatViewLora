@@ -1,0 +1,11 @@
+import { Object3D } from "three";
+import type { Context } from "../../engine_setup.js";
+declare type ExportOptions = {
+    context: Context;
+    scene?: Object3D | Array<Object3D>;
+    binary?: boolean;
+    animations?: boolean;
+    downloadAs?: string;
+};
+export declare function exportAsGLTF(_opts: ExportOptions): Promise<ArrayBuffer | Record<string, any>>;
+export {};

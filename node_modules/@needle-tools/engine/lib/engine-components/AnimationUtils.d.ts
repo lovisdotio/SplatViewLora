@@ -1,0 +1,8 @@
+import { Object3D } from "three";
+/** Internal method - This marks an object as being animated. Make sure to always call isAnimated=false if you stop animating the object
+ * @param obj The object to mark
+ * @param isAnimated Whether the object is animated or not
+ */
+export declare function setObjectAnimated(obj: Object3D, animatedBy: object, isAnimated: boolean): void;
+/** Get is the object is currently animated. Currently used by the Animator to check if a timeline animationtrack is actively animating an object */
+export declare function getObjectAnimated(obj: Object3D): boolean;

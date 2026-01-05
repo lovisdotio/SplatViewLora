@@ -1,0 +1,103 @@
+import type { NeedleXRSession } from "./NeedleXRSession.js";
+
+export declare type XRSessionEventArgs = { session: NeedleXRSession };
+
+const onXRSessionStartListeners: ((evt: XRSessionEventArgs) => void)[] = [];
+
+/**
+ * Add a listener for when an XR session starts
+ * This event is triggered when the XR session is started, either by the user or by the application before all other XR start events  
+ * @param fn The function to call when the XR session starts
+ * @example
+ * ```js
+ * onXRSessionStart((evt) => {
+ *   console.log("XR session started", evt);
+ * });
+ * ```
+ */
+export function onXRSessionStart(fn: (evt: XRSessionEventArgs) => void) {
+    if (onXRSessionStartListeners.indexOf(fn) === -1) {
+        onXRSessionStartListeners.push(fn);
+    }
+}
+/**
+ * Remove a listener for when an XR session starts
+ * @param fn The function to remove from the listeners
+ * @example
+ * ```js
+ * const myFunction = (evt) => {
+ *  console.log("XR session started", evt);
+ * };
+ * onXRSessionStart(myFunction);
+ * offXRSessionStart(myFunction);
+ * ```
+ */
+export function offXRSessionStart(fn: (evt: XRSessionEventArgs) => void) {
+    const index = onXRSessionStartListeners.indexOf(fn);
+    if (index !== -1) {
+        onXRSessionStartListeners.splice(index, 1);
+    }
+}
+
+const onXRSessionEndListeners: ((evt: XRSessionEventArgs) => void)[] = [];
+
+/**
+ * Add a listener for when an XR session ends 
+ * This event is triggered when the XR session is ended, either by the user or by the application before all other XR end events  
+ * @param fn The function to call when the XR session ends
+ * @example
+ * ```js
+ * onXRSessionEnd((evt) => {
+ *    console.log("XR session ended", evt);
+ * });
+ * ```
+ */
+export function onXRSessionEnd(fn: (evt: XRSessionEventArgs) => void) {
+    if (onXRSessionEndListeners.indexOf(fn) === -1) {
+        onXRSessionEndListeners.push(fn);
+    }
+};
+
+/**
+ * Remove a listener for when an XR session ends
+ * @param fn The function to remove from the listeners
+ * @example
+ * ```js
+ * const myFunction = (evt) => {
+ *  console.log("XR session ended", evt);
+ * };
+ * onXRSessionEnd(myFunction);
+ * offXRSessionEnd(myFunction);
+ * ```
+ */
+export function offXRSessionEnd(fn: (evt: XRSessionEventArgs) => void) {
+    const index = onXRSessionEndListeners.indexOf(fn);
+    if (index !== -1) {
+        onXRSessionEndListeners.splice(index, 1);
+    }
+}
+
+
+/**
+ * @internal
+ * Invoke the XRSessionStart event
+ * @param evt The XRSession event arguments
+ */
+export function invokeXRSessionStart(evt: XRSessionEventArgs) {
+    globalThis.dispatchEvent(new CustomEvent("needle-xrsession-start", { detail: evt }));
+    for (let i = 0; i < onXRSessionStartListeners.length; i++) {
+        onXRSessionStartListeners[i](evt);
+    }
+}
+
+/**
+ * @internal
+ * Invoke the XRSessionEnd event
+ * @param evt The XRSession event arguments
+ */
+export function invokeXRSessionEnd(evt: XRSessionEventArgs) {
+    globalThis.dispatchEvent(new CustomEvent("needle-xrsession-end", { detail: evt }));
+    for (let i = 0; i < onXRSessionEndListeners.length; i++) {
+        onXRSessionEndListeners[i](evt);
+    }
+}

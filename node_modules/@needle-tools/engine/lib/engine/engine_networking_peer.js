@@ -1,0 +1,133 @@
+import Peer from "peerjs";
+let peerOptions = undefined;
+export function getPeerOptions() {
+    return peerOptions;
+}
+export function setPeerOptions(opts) {
+    peerOptions = opts;
+}
+export function getPeerjsInstance(id, opts) {
+    if (!opts)
+        opts = {};
+    opts = {
+        ...peerOptions,
+        ...opts,
+    };
+    if (id)
+        return new Peer(id, opts);
+    return new Peer(opts);
+}
+async function importPeer() {
+    const pkg = await import("peerjs");
+    console.log(pkg);
+    if (pkg.default === undefined)
+        return pkg;
+    return pkg.default;
+}
+var MessageType;
+(function (MessageType) {
+    MessageType["ConnectionList"] = "connection-list";
+})(MessageType || (MessageType = {}));
+export class PeerNetworking {
+    get isHost() {
+        return this._host !== undefined;
+    }
+    _host;
+    _client;
+    _clientData;
+    constructor() {
+        this.onEnable();
+    }
+    onEnable() {
+        const hostId = "HOST-5980e65c-8438-453e-8b35-f13c736dcd81";
+        this.trySetupHost(hostId);
+    }
+    async trySetupHost(id) {
+        const Peer = await importPeer();
+        const host = new Peer(id);
+        host.on("error", err => {
+            console.error(err);
+            this._host = undefined;
+            this.trySetupClient(id);
+        });
+        host.on("open", _id => {
+            this._host = new PeerHost(host);
+        });
+    }
+    async trySetupClient(hostId) {
+        const Peer = await importPeer();
+        this._client = new Peer();
+        this._client.on("error", err => {
+            console.error("Client error", err);
+        });
+        this._client.on("open", id => {
+            console.log("client connected", id);
+            this._clientData = this._client.connect(hostId, { metadata: { id: id } });
+            this._clientData.on("open", () => {
+                console.log("Connected to host");
+            });
+            this._clientData.on("data", data => {
+                console.log("<<", data);
+            });
+        });
+    }
+}
+class AbstractPeerHandler {
+    _peer;
+    constructor(peer) {
+        this._peer = peer;
+    }
+}
+//@ts-ignore
+class PeerClient extends AbstractPeerHandler {
+    get isHost() { return false; }
+    onConnection(_con) {
+    }
+}
+class PeerHost extends AbstractPeerHandler {
+    get isHost() { return true; }
+    _connections = [];
+    constructor(peer) {
+        super(peer);
+        console.log("I AM THE HOST");
+        this._peer?.on("connection", this.onConnection.bind(this));
+        this._peer.on("close", () => {
+            this.broadcast("BYE");
+        });
+        setInterval(() => {
+            this.broadcast("HELLO");
+        }, 2000);
+    }
+    onConnection(con) {
+        console.log("host connection", con);
+        con.on("open", () => {
+            this._connections.push(con);
+            this.broadcastConnection(con);
+        });
+    }
+    broadcastConnection(_con) {
+        const connectionIds = this._connections.map(c => c.metadata?.id).filter(id => id !== undefined);
+        this.broadcast({ "type": MessageType.ConnectionList, "connections": connectionIds });
+    }
+    broadcast(msg) {
+        if (msg === undefined || msg === null)
+            return;
+        console.log(">>", msg);
+        for (const cur in this._peer.connections) {
+            const curCon = this._peer.connections[cur];
+            if (!curCon)
+                continue;
+            if (Array.isArray(curCon)) {
+                for (const entry of curCon) {
+                    if (!entry)
+                        continue;
+                    entry.send(msg);
+                }
+            }
+            else {
+                console.warn(curCon);
+            }
+        }
+    }
+}
+//# sourceMappingURL=engine_networking_peer.js.map

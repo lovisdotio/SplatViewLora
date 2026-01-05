@@ -1,0 +1,37 @@
+import { IContext } from "../../engine_types.js";
+export declare class NeedleSpatialMenu {
+    private readonly _context;
+    private readonly needleMenu;
+    private readonly htmlButtonsMap;
+    private enabled;
+    constructor(context: IContext, menu: HTMLElement);
+    setEnabled(enabled: boolean): void;
+    private userRequestedMenu;
+    /** Bring up the spatial menu. This is typically invoked from a button click.
+     * The menu will show at a lower height to be easily accessible.
+     * @returns true if the menu was shown, false if it can't be shown because the menu has been disabled.
+     */
+    setDisplay(display: boolean): boolean;
+    onDestroy(): void;
+    private uiisDirty;
+    markDirty(): void;
+    private _showNeedleLogo;
+    showNeedleLogo(show: boolean): void;
+    private _wasInXR;
+    private preRender;
+    private onEnterXR;
+    private onExitXR;
+    private createButtonFromHTMLNode;
+    private readonly _menuTarget;
+    private readonly positionFilter;
+    private updateMenu;
+    private ensureRenderOnTop;
+    private familyName;
+    private menu?;
+    get isVisible(): boolean | undefined;
+    private getMenu;
+    private _poweredByNeedleElement;
+    private handleNeedleWatermark;
+    private ensureFont;
+    private createButton;
+}

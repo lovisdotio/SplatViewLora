@@ -1,0 +1,36 @@
+export declare class LinkedListNode<T> {
+    data: T;
+    next: LinkedListNode<T> | null;
+    prev: LinkedListNode<T> | null;
+    constructor(data: T);
+    hasPrev(): boolean;
+    hasNext(): boolean;
+}
+export declare class CircularLinkedList<T> {
+    length: number;
+    head: LinkedListNode<T> | null;
+    constructor();
+    isEmpty(): boolean;
+    start(): T | null;
+    push(data: T): LinkedListNode<T>;
+    insertAfter(prevNode: LinkedListNode<T>, data: T): LinkedListNode<T>;
+    last(): LinkedListNode<T> | undefined;
+    values(): Generator<T, void, unknown>;
+}
+export declare class LinkedList<T> {
+    length: number;
+    head: LinkedListNode<T> | null;
+    tail: LinkedListNode<T> | null;
+    constructor();
+    isEmpty(): boolean;
+    clear(): void;
+    front(): T | null;
+    back(): T | null;
+    dequeue(): T | undefined;
+    pop(): T | undefined;
+    queue(data: T): void;
+    push(data: T): void;
+    insertBefore(node: LinkedListNode<T>, data: T): void;
+    remove(data: T): void;
+    values(): Generator<T, void, unknown>;
+}

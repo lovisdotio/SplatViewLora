@@ -1,0 +1,109 @@
+import { DataTextureLoader,EquirectangularReflectionMapping, Object3D, PerspectiveCamera, Scene, Vector3 } from "three";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+
+import { AssetReference } from "./engine_addressables.js";
+import { getBoundingBox } from "./engine_three_utils.js";
+
+declare type ComparisonSceneOptions = {
+    /**
+     * An array of model urls to load
+     */
+    files: string[];
+    /**
+     * Optional dom element to attach the orbit controls to. By default this should be the WebGLRenderer.domElement
+     */
+    domElement?: HTMLElement;
+    /**
+     * Can be a .hdr or .exr file url
+     */
+    environment?: string;
+}
+
+/**
+ * A collection of utility methods for quickly spinning up test environments
+ */
+export class TestSceneUtils {
+
+    /**
+     * Use this method to quickly setup a scene to compare multiple models.  
+     * @example
+     * ```ts
+     * const files = [
+     *    "https://threejs.org/examples/models/gltf/RobotExpressive/RobotExpressive.glb",
+     *   "https://threejs.org/examples/models/gltf/Lantern/glTF-Binary/Lantern.glb",
+     * ];
+     * const { scene, camera } = await TestUtils.createComparisonScene({ files });
+     * // this could now be assigned to the Needle Engine Context
+     * context.scene = scene;
+     * context.mainCamera = camera;
+     * ```
+     */
+    static async createComparisonScene(opts: ComparisonSceneOptions) {
+
+        const { files } = opts;
+
+        const promises = Promise.all(files.map(file => new AssetReference(file).loadAssetAsync()));
+        const results = await promises;
+        const scene = new Scene();
+
+        let offset = 0;
+        for (const result of results) {
+            if (result instanceof Object3D) {
+                result.position.y = offset;
+                scene.add(result);
+                const box = getBoundingBox([result]);
+                offset += box.getSize(new Vector3()).y;
+                offset += .1;
+            }
+        }
+        const camera = new PerspectiveCamera(20);
+        scene.add(camera);
+
+        // Load an environment map
+        const environmentUrl = opts.environment || "https://dl.polyhaven.org/file/ph-assets/HDRIs/exr/1k/studio_small_09_1k.exr";
+        if (environmentUrl) {
+            let loader: DataTextureLoader | null = null;
+            if (environmentUrl.endsWith(".hdr")) {
+                const RGBELoader = (await import("three/examples/jsm/loaders/RGBELoader.js")).RGBELoader;
+                loader = new RGBELoader();
+            }
+            else if (environmentUrl.endsWith(".exr")) {
+                const EXRLoader = (await import("three/examples/jsm/loaders/EXRLoader.js")).EXRLoader;
+                loader = new EXRLoader();
+            }
+            if (loader) {
+                const envmap = await loader.loadAsync(environmentUrl).catch((e) => { console.error(e); return null; });
+                if (envmap) {
+                    envmap.mapping = EquirectangularReflectionMapping;
+                    envmap.needsUpdate = true;
+                    scene.background = envmap;
+                    scene.environment = envmap;
+                    scene.backgroundBlurriness = .75;
+                }
+            }
+            else console.warn("Unsupported environment map format", environmentUrl);
+        }
+
+        const box = getBoundingBox(scene.children);
+        const center = box.getCenter(new Vector3());
+        const size = box.getSize(new Vector3());
+        const max = Math.max(size.x, size.y, size.z);
+        const distance = max / (2 * Math.tan(Math.PI * camera.fov / 360));
+        camera.position.set(center.x, center.y, distance);
+        camera.lookAt(center);
+
+        const orbit = new OrbitControls(camera, opts.domElement || document.body);
+        orbit.target = center;
+        orbit.update();
+
+
+        const element = (opts.domElement || document.body).getBoundingClientRect();
+        camera.aspect = element.width / element.height;
+        camera.updateProjectionMatrix();
+
+        return {
+            scene,
+            camera
+        }
+    }
+}

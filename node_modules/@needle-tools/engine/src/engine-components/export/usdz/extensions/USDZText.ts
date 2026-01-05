@@ -1,0 +1,240 @@
+import { Color, Material, Matrix4, MeshStandardMaterial, Object3D, Vector3 } from "three";
+
+import { GameObject } from "../../../Component.js";
+import { RectTransform } from "../../../ui/RectTransform.js";
+import { Text } from "../../../ui/Text.js"
+import { TextAnchor } from "../../../ui/Text.js";
+import type { IUSDExporterExtension } from "../Extension.js";
+import type { IBehaviorElement } from "../extensions/behavior/BehavioursBuilder.js";
+import { getMaterialNameForUSD,USDDocument, USDObject, USDWriter, USDZExporterContext } from "../ThreeUSDZExporter.js";
+
+
+export enum TextWrapMode {
+    singleLine = "singleLine",
+    hardBreaks = "hardBreaks",
+    flowing = "flowing",
+}
+
+export enum HorizontalAlignment {
+    left = "left",
+    center = "center",
+    right = "right",
+    justified = "justified"
+}
+
+export enum VerticalAlignment {
+    top = "top",
+    middle = "middle",
+    lowerMiddle = "lowerMiddle",
+    baseline = "baseline",
+    bottom = "bottom"
+}
+
+export class USDZText implements IBehaviorElement {
+
+    static global_id: number = 0;
+    static getId(): number {
+        return this.global_id++;
+    }
+
+    id: string;
+    content: string = "";
+    font?: string[] = [];
+    pointSize: number = 144;
+    width?: number;
+    height?: number;
+    depth?: number;
+    wrapMode?: TextWrapMode;
+    horizontalAlignment?: HorizontalAlignment;
+    verticalAlignment?: VerticalAlignment;
+
+    material?: Material;
+
+    setDepth(depth: number): USDZText {
+        this.depth = depth;
+        return this;
+    }
+
+    setPointSize(pointSize: number): USDZText {
+        this.pointSize = pointSize;
+        return this;
+    }
+
+    setHorizontalAlignment(align: HorizontalAlignment) {
+        this.horizontalAlignment = align;
+        return this;
+    }
+
+    setVerticalAlignment(align: VerticalAlignment) {
+        this.verticalAlignment = align;
+        return this;
+    }
+
+    constructor(id: string) {
+        this.id = id;
+    }
+
+    writeTo(_document: USDDocument | undefined, writer: USDWriter) {
+
+		writer.beginBlock( `def Preliminary_Text "${this.id}"`, "(", false);
+        writer.appendLine(`prepend apiSchemas = ["MaterialBindingAPI"]`);
+        writer.closeBlock( ")" );
+		writer.beginBlock();
+
+        if (this.content)
+            writer.appendLine(`string content = "${this.content}"`);
+
+        if (!this.font || this.font.length <= 0) {
+            this.font ||= [];
+            this.font?.push("sans-serif");
+        }
+        const str = this.font.map(s => `"${s}"`).join(", ");
+        writer.appendLine(`string[] font = [ ${str} ]`);
+
+        writer.appendLine(`double pointSize = ${this.pointSize}`);
+        if (typeof this.width === "number")
+            writer.appendLine(`double width = ${this.width}`);
+        if (typeof this.height === "number")
+            writer.appendLine(`double height = ${this.height}`);
+        if (typeof this.depth === "number")
+            writer.appendLine(`double depth = ${this.depth}`);
+        if (this.wrapMode)
+            writer.appendLine(`token wrapMode = "${this.wrapMode}"`);
+        if (this.horizontalAlignment)
+            writer.appendLine(`token horizontalAlignment = "${this.horizontalAlignment}"`);
+        if (this.verticalAlignment)
+            writer.appendLine(`token verticalAlignment = "${this.verticalAlignment}"`);
+
+        if (this.material !== undefined) {
+            writer.appendLine(`rel material:binding = </StageRoot/Materials/${getMaterialNameForUSD(this.material)}>`)
+        }
+
+        writer.closeBlock();
+    }
+
+}
+
+
+export class TextBuilder {
+    static singleLine(str: string, pointSize?: number, depth?: number): USDZText {
+
+        const text = new USDZText("text_" + USDZText.getId());
+        text.content = str;
+        if (pointSize)
+            text.pointSize = pointSize;
+        if (depth)
+            text.depth = depth;
+        return text;
+    }
+
+    static multiLine(str: string, width: number, height: number, horizontal: HorizontalAlignment, vertical: VerticalAlignment, wrapMode?: TextWrapMode) {
+        const text = new USDZText("text_" + USDZText.getId());
+        text.content = str;
+        text.width = width;
+        text.height = height;
+        text.horizontalAlignment = horizontal;
+        text.verticalAlignment = vertical;
+        if (wrapMode !== undefined)
+            text.wrapMode = wrapMode;
+        return text;
+    }
+}
+
+const rotateYAxisMatrix = new Matrix4().makeRotationY(Math.PI);
+const invertX = new Matrix4().makeScale(-1, 1, -1);
+
+export class TextExtension implements IUSDExporterExtension {
+    get extensionName(): string {
+        return "text";
+    }
+
+    exportText(object: Object3D, newModel: USDObject, _context: USDZExporterContext) {
+
+        const text = GameObject.getComponent(object, Text);
+        if (!text) return;
+
+        const rt = GameObject.getComponent(object, RectTransform);
+        let width = 100;
+        let height = 100;
+        if (rt) {
+            width = rt.width;
+            height = rt.height;
+        }
+
+        const mat = rotateYAxisMatrix.clone();
+        if (rt) // Not ideal but works for now:
+            mat.premultiply(invertX);
+        newModel.setMatrix(mat);
+
+        const color = text.color.clone();
+        newModel.material = new MeshStandardMaterial({ color: color, emissive: color });
+
+        newModel.addEventListener("serialize", (writer: USDWriter, _context: USDZExporterContext) => {
+            let txt = text.text;
+            // Some texts use \r\n for newlines, we remove the \r here.
+            // Also encountered a single text ending with \r which broke the output.
+            txt = txt.replace(/\r/g, "");
+            txt = txt.replace(/\n/g, "\\n");
+            const textObj = TextBuilder.multiLine(txt, width, height, HorizontalAlignment.center, VerticalAlignment.bottom, TextWrapMode.flowing);
+            this.setTextAlignment(textObj, text.alignment);
+            this.setOverflow(textObj, text);
+            if (newModel.material)
+                textObj.material = newModel.material;
+            textObj.pointSize = this.convertToTextSize(text.fontSize);
+            textObj.depth = .001;
+            textObj.writeTo(undefined, writer);
+        });
+    }
+
+    private convertToTextSize(pixel: number) {
+        return 1 / 0.0502 * 144 * pixel;
+    }
+
+    private setOverflow(textObj: USDZText, text: Text) {
+        if (text.horizontalOverflow) {
+            textObj.wrapMode = TextWrapMode.singleLine;
+        }
+        else {
+            textObj.wrapMode = TextWrapMode.flowing;
+        }
+    }
+
+    private setTextAlignment(text: USDZText, alignment: TextAnchor) {
+        switch (alignment) {
+            case TextAnchor.LowerLeft:
+            case TextAnchor.MiddleLeft:
+            case TextAnchor.UpperLeft:
+                text.horizontalAlignment = HorizontalAlignment.left;
+                break;
+            case TextAnchor.LowerCenter:
+            case TextAnchor.MiddleCenter:
+            case TextAnchor.UpperCenter:
+                text.horizontalAlignment = HorizontalAlignment.center;
+                break;
+            case TextAnchor.LowerRight:
+            case TextAnchor.MiddleRight:
+            case TextAnchor.UpperRight:
+                text.horizontalAlignment = HorizontalAlignment.right;
+                break;
+        }
+        switch (alignment) {
+            case TextAnchor.LowerLeft:
+            case TextAnchor.LowerCenter:
+            case TextAnchor.LowerRight:
+                text.verticalAlignment = VerticalAlignment.bottom;
+                break;
+            case TextAnchor.MiddleLeft:
+            case TextAnchor.MiddleCenter:
+            case TextAnchor.MiddleRight:
+                text.verticalAlignment = VerticalAlignment.middle;
+                break;
+            case TextAnchor.UpperLeft:
+            case TextAnchor.UpperCenter:
+            case TextAnchor.UpperRight:
+                text.verticalAlignment = VerticalAlignment.top;
+                break;
+        }
+    }
+}
+
+

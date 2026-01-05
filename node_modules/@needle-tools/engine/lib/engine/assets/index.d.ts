@@ -1,0 +1,11 @@
+import { Group } from "three";
+/** Logo Only */
+export declare const needleLogoOnlySVG: string;
+/** Made With Needle Logo */
+export declare const madeWithNeedleSVG: string;
+/** Logo + Needle Typo */
+export declare const needleLogoSVG: string;
+/** experimental
+ * @returns {Group} needle logo as a group of meshes with the needle logo. Size is normalized to one unit
+ */
+export declare function needleLogoAsSVGObject(): Group<import("three").Object3DEventMap>;

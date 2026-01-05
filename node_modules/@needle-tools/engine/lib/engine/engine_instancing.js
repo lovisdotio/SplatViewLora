@@ -1,0 +1,40 @@
+export const NEED_UPDATE_INSTANCE_KEY = Symbol("NEEDLE_NEED_UPDATE_INSTANCE");
+export const $isUsingInstancing = Symbol("isUsingInstancing");
+export const $instancingRenderer = Symbol("instancingRenderer");
+export const $instancingAutoUpdateBounds = Symbol("instancingAutoUpdateBounds");
+/**
+ * Utility class for accessing instancing related properties
+ */
+export class InstancingUtil {
+    /** Is this object rendered using a InstancedMesh */
+    static isUsingInstancing(instance) { return instance[$isUsingInstancing] === true; }
+    /** Returns the instanced mesh IF the object is rendered by an instanced mesh
+     * @link https://threejs.org/docs/#api/en/objects/InstancedMesh
+     */
+    static getRenderer(instance) { return instance[$instancingRenderer] || null; }
+    setAutoUpdateBounds(instance, value) {
+        const renderer = InstancingUtil.getRenderer(instance);
+        if (renderer) {
+            renderer[$instancingAutoUpdateBounds] = value;
+        }
+    }
+    // TODO: change this so it does not set matrix world directly but some flag that is only used by instancing
+    /** Mark an instanced object dirty so the instance matrix will be updated */
+    static markDirty(go, recursive = true) {
+        if (!go)
+            return;
+        // potential optimization:
+        // if(go.matrixWorldNeedsUpdate) return;
+        // console.warn("UPDATE", go);
+        if (this.isUsingInstancing(go)) {
+            go[NEED_UPDATE_INSTANCE_KEY] = true;
+            go.matrixWorldNeedsUpdate = true;
+        }
+        if (recursive) {
+            for (const child of go.children) {
+                InstancingUtil.markDirty(child, true);
+            }
+        }
+    }
+}
+//# sourceMappingURL=engine_instancing.js.map
