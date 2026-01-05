@@ -22,6 +22,7 @@ Automatically generate training datasets for LoRA fine-tuning directly from your
 - **3 distance variations**: Close-up, Normal, Wide shot
 - **8 azimuth angles** × **4 elevation levels** = Complete coverage
 - **Elevation angles**: -30° (low-angle), 0° (eye-level), 30° (elevated), 60° (high-angle)
+- **Smart low-angle adjustment**: Negative elevations are automatically adjusted based on distance to prevent camera going underground (Close: -30°, Medium: -20°, Wide: -10°)
 - **Optional .txt captions** for each image
 - **One-click download** as a ready-to-use dataset (ZIP)
 - Perfect for training LoRA models on your own 3D subjects

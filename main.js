@@ -1142,11 +1142,23 @@ async function startLoraCapture() {
          const paddedNumber = String(captureCount).padStart(4, '0');
          const randomKey = Math.random().toString(36).substring(2, 8);
          
-         updateLoraStatus(`Capturing ${captureCount}/${totalPoses}... (${distance.key})`);
-         
-         // Calculate camera position with current distance
-         const elevRad = elev * Math.PI / 180;
-         const azimRad = azim * Math.PI / 180;
+        updateLoraStatus(`Capturing ${captureCount}/${totalPoses}... (${distance.key})`);
+        
+        // Adjust negative elevations based on distance to prevent camera going underground
+        // Close-up: full angle (-30°), Medium: 2/3 (-20°), Wide: 1/3 (-10°)
+        let adjustedElev = elev;
+        if (elev < 0) {
+          if (distance.key === "medium") {
+            adjustedElev = elev * (2/3); // -30° becomes -20°
+          } else if (distance.key === "wide") {
+            adjustedElev = elev * (1/3); // -30° becomes -10°
+          }
+          // close-up keeps the full negative angle
+        }
+        
+        // Calculate camera position with current distance
+        const elevRad = adjustedElev * Math.PI / 180;
+        const azimRad = azim * Math.PI / 180;
          
          const x = distance.radius * Math.cos(elevRad) * Math.sin(azimRad);
          const y = distance.radius * Math.sin(elevRad);
@@ -1189,18 +1201,20 @@ async function startLoraCapture() {
            finalEndDataUrl = renderer.domElement.toDataURL('image/png', 1.0);
          }
          
-         // Store both START and END images with the same base ID
-         loraCaptures.set(baseId, { 
-           startDataUrl: referenceDataUrl, // Always the same reference image
-           endDataUrl: finalEndDataUrl,    // The specific angle/distance image
-           prompt, 
-           azim, 
-           elev, 
-           distance: distance.key 
-         });
+        // Store both START and END images with the same base ID
+        loraCaptures.set(baseId, { 
+          startDataUrl: referenceDataUrl, // Always the same reference image
+          endDataUrl: finalEndDataUrl,    // The specific angle/distance image
+          prompt, 
+          azim, 
+          elev,                           // Original elevation from settings
+          adjustedElev,                   // Actual elevation used (adjusted for distance)
+          distance: distance.key 
+        });
          
-         updateLoraCapturedCount(captureCount);
-         console.log(`Captured pair: ${baseId} (${prompt})`);
+        updateLoraCapturedCount(captureCount);
+        const elevInfo = elev < 0 ? ` [adjusted: ${adjustedElev.toFixed(1)}°]` : '';
+        console.log(`Captured pair: ${baseId} (${prompt})${elevInfo}`);
        }
      }
    }
